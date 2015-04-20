@@ -52,9 +52,9 @@ typedef struct
     int currentFrame;
     int startFrame;
     int camNo;
-    double startTime;
+    int64 startTime;
     float fps;
-} ImAcq ;
+} ImAcq;
 
 ImAcq *imAcqAlloc();
 

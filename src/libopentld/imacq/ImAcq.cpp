@@ -52,43 +52,43 @@ ImAcq *imAcqAlloc()
 
 void imAcqInit(ImAcq *imAcq)
 {
-    if(imAcq->method == IMACQ_CAM)
+    if (imAcq->method == IMACQ_CAM)
     {
         imAcq->capture = cvCaptureFromCAM(imAcq->camNo);
 
-        if(imAcq->capture == NULL)
+        if (imAcq->capture == NULL)
         {
             printf("Error: Unable to initialize camera\n");
             exit(0);
         }
     }
-    else if(imAcq->method == IMACQ_VID)
+    else if (imAcq->method == IMACQ_VID)
     {
         imAcq->capture = cvCaptureFromAVI(imAcq->imgPath);
 
-        if(imAcq->capture == NULL)
+        if (imAcq->capture == NULL)
         {
             printf("Error: Unable to open video\n");
             exit(0);
         }
 
         // take all frames
-        if(imAcq->lastFrame == 0)
+        if (imAcq->lastFrame == 0)
             imAcq->lastFrame = imAcqVidGetNumberOfFrames(imAcq); //This sometimes returns garbage
 
         // lastFrame out of bounds
-        if(imAcq->lastFrame > imAcqVidGetNumberOfFrames(imAcq))
+        if (imAcq->lastFrame > imAcqVidGetNumberOfFrames(imAcq))
         {
             printf("Error: video has only %d frames you selected %d as last frame.\n",
-                   imAcqVidGetNumberOfFrames(imAcq), imAcq->lastFrame);
+                imAcqVidGetNumberOfFrames(imAcq), imAcq->lastFrame);
             exit(1);
         }
 
         // something is wrong with startFrame and/or lastFrame
-        if((imAcq->lastFrame < 1) || (imAcq->currentFrame < 1) || ((imAcq->currentFrame > imAcq->lastFrame)))
+        if ((imAcq->lastFrame < 1) || (imAcq->currentFrame < 1) || ((imAcq->currentFrame > imAcq->lastFrame)))
         {
             printf("Error: something is wrong with the start and last frame number. startFrame: %d lastFrame: %d\n",
-                   imAcq->currentFrame, imAcq->lastFrame);
+                imAcq->currentFrame, imAcq->lastFrame);
             exit(1);
         }
 
@@ -96,25 +96,24 @@ void imAcqInit(ImAcq *imAcq)
         //This produces strange results on some videos and is deactivated for now.
         //imAcqVidSetNextFrameNumber(imAcq, imAcq->currentFrame);
     }
-    else if(imAcq->method == IMACQ_STREAM)
+    else if (imAcq->method == IMACQ_STREAM)
     {
         imAcq->capture = cvCaptureFromFile(imAcq->imgPath);
 
-        if(imAcq->capture == NULL)
+        if (imAcq->capture == NULL)
         {
             printf("Error: Unable to open video\n");
             exit(0);
         }
-
     }
-    
+
     imAcq->startFrame = imAcq->currentFrame;
     imAcq->startTime = cvGetTickCount();
 }
 
 void imAcqFree(ImAcq *imAcq)
 {
-    if((imAcq->method == IMACQ_CAM) || (imAcq->method == IMACQ_VID) || (imAcq->method == IMACQ_STREAM))
+    if ((imAcq->method == IMACQ_CAM) || (imAcq->method == IMACQ_VID) || (imAcq->method == IMACQ_STREAM))
     {
         cvReleaseCapture(&imAcq->capture);
     }
@@ -126,13 +125,12 @@ IplImage *imAcqLoadImg(ImAcq *imAcq, char *path)
 {
     IplImage *image = cvLoadImage(path);
 
-    if(image == NULL)
+    if (image == NULL)
     {
         printf("Error: %s does not exist or is not an image.\n", path);
     }
 
     return image;
-
 }
 
 IplImage *imAcqLoadFrame(ImAcq *imAcq, int fNo)
@@ -140,54 +138,50 @@ IplImage *imAcqLoadFrame(ImAcq *imAcq, int fNo)
     char path[255];
     sprintf(path, imAcq->imgPath, fNo);
 
-    printf("load path %s\n", path);
-
     return cvLoadImage(path);
 }
 
 IplImage *imAcqLoadCurrentFrame(ImAcq *imAcq)
 {
-
     return imAcqLoadFrame(imAcq, imAcq->currentFrame);
 }
 
 IplImage *imAcqGetImgByCurrentTime(ImAcq *imAcq)
 {
     //Calculate current image number
-    if((imAcq->method == IMACQ_CAM) || (imAcq->method == IMACQ_STREAM))
+    if ((imAcq->method == IMACQ_CAM) || (imAcq->method == IMACQ_STREAM))
     {
         //printf("grabbing image from sensor");
         return imAcqGrab(imAcq->capture);
     }
 
-    float secondsPassed = (cvGetTickCount() - imAcq->startTime) / cvGetTickFrequency();
+    float secondsPassed = static_cast<float>((cvGetTickCount() - imAcq->startTime) / cvGetTickFrequency());
     secondsPassed = secondsPassed / 1000000;
 
-    int framesPassed = secondsPassed * imAcq->fps;
+    int framesPassed = static_cast<int>(secondsPassed * imAcq->fps);
 
     int currentFrame = imAcq->startFrame + framesPassed;
 
-    if(imAcq->lastFrame > 0 && currentFrame > imAcq->lastFrame) return NULL;
+    if (imAcq->lastFrame > 0 && currentFrame > imAcq->lastFrame) return NULL;
 
     return imAcqLoadFrame(imAcq, currentFrame);
 }
 
 IplImage *imAcqGetImg(ImAcq *imAcq)
 {
-
     IplImage *img = NULL;
 
-    if(imAcq->method == IMACQ_CAM || imAcq->method == IMACQ_VID)
+    if (imAcq->method == IMACQ_CAM || imAcq->method == IMACQ_VID)
     {
         img = imAcqGrab(imAcq->capture);
     }
 
-    if(imAcq->method == IMACQ_IMGS)
+    if (imAcq->method == IMACQ_IMGS)
     {
         img = imAcqLoadCurrentFrame(imAcq);
     }
 
-    if((imAcq->method == IMACQ_LIVESIM) || (imAcq->method == IMACQ_STREAM))
+    if ((imAcq->method == IMACQ_LIVESIM) || (imAcq->method == IMACQ_STREAM))
     {
         img = imAcqGetImgByCurrentTime(imAcq);
     }
@@ -203,21 +197,21 @@ IplImage *imAcqGrab(CvCapture *capture)
 
     frame = cvQueryFrame(capture);
 
-    if(frame == NULL)
+    if (frame == NULL)
     {
         // Sometimes the camera driver needs some time to start
         // sleep 100ms and try again
-        for(int i = 0; i < 5; ++i)
+        for (int i = 0; i < 5; ++i)
         {
             printf("Error: Unable to grab image... retry\n");
             msleep(100);
             frame = cvQueryFrame(capture);
-            if(frame != NULL)
+            if (frame != NULL)
             {
                 break;
             }
         }
-        if(frame == NULL)
+        if (frame == NULL)
         {
             exit(-1);
         }
@@ -253,9 +247,9 @@ void imAcqAdvance(ImAcq *imAcq)
 
 int imAcqHasMoreFrames(ImAcq *imAcq)
 {
-    if(imAcq->lastFrame < 1) return 1;
+    if (imAcq->lastFrame < 1) return 1;
 
-    if(imAcq->currentFrame > imAcq->lastFrame)
+    if (imAcq->currentFrame > imAcq->lastFrame)
     {
         return 0;
     }
@@ -270,16 +264,16 @@ int imAcqVidGetNextFrameNumber(ImAcq *imAcq)
     // OpenCV index starts with 0
     // maybe a OpenCV bug: cvGetCaptureProperty with CV_CAP_PROP_POS_FRAMES returns the LAST
     // frame number to be encoded not the NEXT
-    return ((int) cvGetCaptureProperty(imAcq->capture , CV_CAP_PROP_POS_FRAMES)) + 2;
+    return ((int)cvGetCaptureProperty(imAcq->capture, CV_CAP_PROP_POS_FRAMES)) + 2;
 }
 
 void imAcqVidSetNextFrameNumber(ImAcq *imAcq, int nFrame)
 {
     // OpenCV index starts with 0
-    cvSetCaptureProperty(imAcq->capture , CV_CAP_PROP_POS_FRAMES, nFrame - 2.0);
+    cvSetCaptureProperty(imAcq->capture, CV_CAP_PROP_POS_FRAMES, nFrame - 2.0);
 }
 
 int imAcqVidGetNumberOfFrames(ImAcq *imAcq)
 {
-    return ((int) cvGetCaptureProperty(imAcq->capture , CV_CAP_PROP_FRAME_COUNT));
+    return ((int)cvGetCaptureProperty(imAcq->capture, CV_CAP_PROP_FRAME_COUNT));
 }
