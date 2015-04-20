@@ -34,28 +34,24 @@
 
 namespace tld
 {
+    class Clustering
+    {
+        void calcMeanRect(std::vector<int> * indices);
+        void calcDistances(float *distances);
+        void cluster(float *distances, int *clusterIndices);
+    public:
+        int *windows;
+        int numWindows;
 
-class Clustering
-{
-    void calcMeanRect(std::vector<int> * indices);
-    void calcDistances(float *distances);
-    void cluster(float *distances, int *clusterIndices);
-public:
-    int *windows;
-    int numWindows;
+        DetectionResult *detectionResult;
 
-    DetectionResult *detectionResult;
+        //Configurable members
+        float cutoff;
 
-    //Configurable members
-    float cutoff;
-
-
-
-    Clustering();
-    virtual ~Clustering();
-    void release();
-    void clusterConfidentIndices();
-};
-
+        Clustering();
+        virtual ~Clustering();
+        void release();
+        void clusterConfidentIndices();
+    };
 } /* namespace tld */
 #endif /* CLUSTERING_H_ */
