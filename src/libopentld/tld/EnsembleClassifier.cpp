@@ -27,7 +27,6 @@
 
 #include <cstdlib>
 #include <cmath>
-
 #include <opencv/cv.h>
 
 #include "EnsembleClassifier.h"
@@ -57,41 +56,60 @@ namespace tld
         release();
     }
 
-    void EnsembleClassifier::init()
+    void EnsembleClassifier::init(std::shared_ptr<std::mt19937> rng)
     {
-        numIndices = pow(2.0f, numFeatures);
+        numIndices = static_cast<int>(pow(2.0f, numFeatures));
 
-        initFeatureLocations();
+        initFeatureLocations(rng);
         initFeatureOffsets();
         initPosteriors();
     }
 
     void EnsembleClassifier::release()
     {
-        delete[] features;
-        features = NULL;
-        delete[] featureOffsets;
-        featureOffsets = NULL;
-        delete[] posteriors;
-        posteriors = NULL;
-        delete[] positives;
-        positives = NULL;
-        delete[] negatives;
-        negatives = NULL;
+        if (features != NULL)
+        {
+            delete[] features;
+            features = NULL;
+        }
+
+        if (featureOffsets != NULL)
+        {
+            delete[] featureOffsets;
+            featureOffsets = NULL;
+        }
+
+        if (posteriors != NULL)
+        {
+            delete[] posteriors;
+            posteriors = NULL;
+        }
+
+        if (positives != NULL)
+        {
+            delete[] positives;
+            positives = NULL;
+        }
+
+        if (negatives != NULL)
+        {
+            delete[] negatives;
+            negatives = NULL;
+        }
     }
 
     /*
      * Generates random measurements in the format <x1,y1,x2,y2>
      */
-    void EnsembleClassifier::initFeatureLocations()
+    void EnsembleClassifier::initFeatureLocations(std::shared_ptr<std::mt19937> rng)
     {
         int size = 2 * 2 * numFeatures * numTrees;
-
+        std::uniform_real_distribution<float> dist(0, 1);
         features = new float[size];
 
         for (int i = 0; i < size; i++)
         {
-            features[i] = rand() / (float)RAND_MAX;
+            features[i] = dist(*rng);
         }
     }
 
@@ -100,7 +118,7 @@ namespace tld
     //Order: scale.tree->feature
     void EnsembleClassifier::initFeatureOffsets()
     {
-        featureOffsets = new int[numScales * numTrees * numFeatures * 2];
+        featureOffsets = new int[numScales * numTrees * numFeatures * 2]{};
         int *off = featureOffsets;
 
         for (int k = 0; k < numScales; k++)
@@ -121,19 +139,9 @@ namespace tld
 
     void EnsembleClassifier::initPosteriors()
     {
-        posteriors = new float[numTrees * numIndices];
-        positives = new int[numTrees * numIndices];
-        negatives = new int[numTrees * numIndices];
-
-        for (int i = 0; i < numTrees; i++)
-        {
-            for (int j = 0; j < numIndices; j++)
-            {
-                posteriors[i * numIndices + j] = 0;
-                positives[i * numIndices + j] = 0;
-                negatives[i * numIndices + j] = 0;
-            }
-        }
+        posteriors = new float[numTrees * numIndices]{};
+        positives = new int[numTrees * numIndices]{};
+        negatives = new int[numTrees * numIndices]{};
     }
 
     void EnsembleClassifier::nextIteration(const Mat &img)

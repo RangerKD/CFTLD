@@ -33,11 +33,11 @@ using namespace cv;
 
 namespace tld
 {
-    Clustering::Clustering()
+    Clustering::Clustering() :
+        cutoff(0.5f),
+        windows(NULL),
+        numWindows(0)
     {
-        cutoff = .5;
-        windows = NULL;
-        numWindows = 0;
     }
 
     Clustering::~Clustering()
@@ -55,7 +55,7 @@ namespace tld
         float x, y, w, h;
         x = y = w = h = 0;
 
-        int numIndices = indices->size();
+        size_t numIndices = indices->size();
 
         for (int i = 0; i < numIndices; i++)
         {
@@ -73,10 +73,10 @@ namespace tld
 
         Rect *rect = new Rect();
         detectionResult->detectorBB = rect;
-        rect->x = floor(x + 0.5);
-        rect->y = floor(y + 0.5);
-        rect->width = floor(w + 0.5);
-        rect->height = floor(h + 0.5);
+        rect->x = static_cast<int>(floor(x + 0.5));
+        rect->y = static_cast<int>(floor(y + 0.5));
+        rect->width = static_cast<int>(floor(w + 0.5));
+        rect->height = static_cast<int>(floor(h + 0.5));
     }
 
     //distances must be of size n*(n+1)/2
@@ -92,7 +92,7 @@ namespace tld
         {
             int firstIndex = confidentIndices.at(0);
             confidentIndices.erase(confidentIndices.begin());
-            tldOverlapOne(windows, numWindows, firstIndex, &confidentIndices, distances_tmp);
+            tldOverlapOne(windows, firstIndex, &confidentIndices, distances_tmp);
             distances_tmp += indices_size - i - 1;
         }
 
@@ -104,11 +104,12 @@ namespace tld
 
     void Clustering::clusterConfidentIndices()
     {
-        int numConfidentIndices = detectionResult->confidentIndices->size();
-        float *distances = new float[numConfidentIndices * (numConfidentIndices - 1) / 2];
+        size_t numConfidentIndices = detectionResult->confidentIndices->size();
+        size_t numDistances = numConfidentIndices * (numConfidentIndices - 1) / 2;
+        float *distances = new float[numDistances]{};
+
         calcDistances(distances);
-        int *clusterIndices = new int[numConfidentIndices];
-        cluster(distances, clusterIndices);
+        cluster(distances);
 
         if (detectionResult->numClusters == 1)
         {
@@ -118,13 +119,16 @@ namespace tld
 
         delete[]distances;
         distances = NULL;
-        delete[]clusterIndices;
-        clusterIndices = NULL;
     }
 
-    void Clustering::cluster(float *distances, int *clusterIndices)
+    void Clustering::cluster(float *distances)
     {
-        int numConfidentIndices = detectionResult->confidentIndices->size();
+        size_t numConfidentIndices = detectionResult->confidentIndices->size();
+
+        int *clusterIndices = new int[numConfidentIndices];
+
+        for (int i = 0; i < numConfidentIndices; i++)
+            clusterIndices[i] = -1;
 
         if (numConfidentIndices == 1)
         {
@@ -133,38 +137,27 @@ namespace tld
             return;
         }
 
-        int numDistances = numConfidentIndices * (numConfidentIndices - 1) / 2;
+        size_t numDistances = numConfidentIndices * (numConfidentIndices - 1) / 2;
 
         //Now: Cluster distances
-        int *distUsed = new int[numDistances];
-
-        for (int i = 0; i < numDistances; i++)
-        {
-            distUsed[i] = 0;
-        }
-
-        for (int i = 0; i < numConfidentIndices; i++)
-        {
-            clusterIndices[i] = -1;
-        }
-
+        int *distUsed = new int[numDistances]{};
         int newClusterIndex = 0;
-
         int numClusters = 0;
 
         while (true)
         {
             //Search for the shortest distance
-            float shortestDist = -1;
+            float shortestDist = -1.f;
             int shortestDistIndex = -1;
-            int i1;
-            int i2;
+            int i1 = 0;
+            int i2 = 0;
             int distIndex = 0;
 
             for (int i = 0; i < numConfidentIndices; i++)   //Row index
             {
                 for (int j = i + 1; j < numConfidentIndices; j++) //Start from i+1
                 {
+                    CV_Assert(distIndex < numDistances);
                     if (!distUsed[distIndex] && (shortestDistIndex == -1 || distances[distIndex] < shortestDist))
                     {
                         shortestDist = distances[distIndex];
@@ -258,5 +251,7 @@ namespace tld
 
         delete[]distUsed;
         distUsed = NULL;
+        delete[]clusterIndices;
+        clusterIndices = NULL;
     }
 } /* namespace tld */

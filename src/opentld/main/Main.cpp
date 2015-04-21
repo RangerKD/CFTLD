@@ -30,6 +30,7 @@
 #include "Gui.h"
 #include "TLDUtil.h"
 #include "Trajectory.h"
+#include "opencv2/imgproc/imgproc.hpp"
 
 using namespace tld;
 using namespace cv;
@@ -38,12 +39,10 @@ void Main::doWork()
 {
     Trajectory trajectory;
     IplImage *img = imAcqGetImg(imAcq);
-    Mat grey(img->height, img->width, CV_8UC1);
-    cvtColor(cvarrToMat(img), grey, CV_BGR2GRAY);
+    Mat colorImage = cvarrToMat(img, true);
 
-    tld->detectorCascade->imgWidth = grey.cols;
-    tld->detectorCascade->imgHeight = grey.rows;
-    tld->detectorCascade->imgWidthStep = grey.step;
+    if (colorImage.channels() == 1)
+        cv::cvtColor(colorImage, colorImage, cv::COLOR_GRAY2BGR);
 
     if (showTrajectory)
     {
@@ -84,144 +83,113 @@ void Main::doWork()
 
     bool reuseFrameOnce = false;
     bool skipProcessingOnce = false;
+    bool paused = false;
+    bool step = false;
+    double tic = 0;
+    double toc = 0;
 
-    if (loadModel && modelPath != NULL)
-    {
-        tld->readFromFile(modelPath);
-        reuseFrameOnce = true;
-    }
-    else if (initialBB != NULL)
+    if (initialBB != NULL)
     {
         Rect bb = tldArrayToRect(initialBB);
 
         printf("Starting at %d %d %d %d\n", bb.x, bb.y, bb.width, bb.height);
-
-        tld->selectObject(grey, &bb);
+        tic = static_cast<double>(getTickCount());
+        tld->selectObject(colorImage, &bb);
+        toc = getTickCount() - tic;
         skipProcessingOnce = true;
         reuseFrameOnce = true;
     }
 
     while (imAcqHasMoreFrames(imAcq))
     {
-        double tic = cvGetTickCount();
-
-        if (!reuseFrameOnce)
+        if (!reuseFrameOnce && (!paused || step))
         {
             cvReleaseImage(&img);
             img = imAcqGetImg(imAcq);
+            colorImage = cvarrToMat(img, true);
+
+            if (colorImage.channels() == 1)
+                cv::cvtColor(colorImage, colorImage, cv::COLOR_GRAY2BGR);
 
             if (img == NULL)
             {
                 printf("current image is NULL, assuming end of input.\n");
                 break;
             }
-
-            cvtColor(cvarrToMat(img), grey, CV_BGR2GRAY);
         }
 
-        if (!skipProcessingOnce)
+        if (!skipProcessingOnce && (!paused || step))
         {
-            tld->processImage(cvarrToMat(img));
+            tic = static_cast<double>(getTickCount());
+            tld->processImage(colorImage);
+            toc = getTickCount() - tic;
         }
         else
         {
             skipProcessingOnce = false;
         }
 
+        float fps = static_cast<float>(getTickFrequency() / toc);
+
         if (printResults != NULL)
         {
             if (tld->currBB != NULL)
             {
-                fprintf(resultsFile, "%d %.2d %.2d %.2d %.2d %f\n", imAcq->currentFrame - 1, tld->currBB->x, tld->currBB->y, tld->currBB->width, tld->currBB->height, tld->currConf);
+                fprintf(resultsFile, "%d, %.2d, %.2d, %.2d, %.2d, %f, %f\n", imAcq->currentFrame - 1,
+                    tld->currBB->x, tld->currBB->y, tld->currBB->width, tld->currBB->height, tld->currConf,
+                    fps);
             }
             else
             {
-                fprintf(resultsFile, "%d NaN NaN NaN NaN NaN\n", imAcq->currentFrame - 1);
+                fprintf(resultsFile, "%d, NaN, NaN, NaN, NaN, NaN, %f\n", imAcq->currentFrame - 1, fps);
             }
         }
-
-        double toc = (cvGetTickCount() - tic) / cvGetTickFrequency();
-
-        toc = toc / 1000000;
-
-        float fps = 1 / toc;
-
-        int confident = (tld->currConf >= threshold) ? 1 : 0;
 
         if (showOutput || saveDir != NULL)
         {
             char string[128];
-
             char learningString[10] = "";
+
+            if (paused && step)
+                step = false;
 
             if (tld->learning)
             {
                 strcpy(learningString, "Learning");
             }
 
-            sprintf(string, "#%d,Posterior %.2f; fps: %.2f, #numwindows:%d, %s", imAcq->currentFrame - 1, tld->currConf, fps, tld->detectorCascade->numWindows, learningString);
+            sprintf(string, "#%d, fps: %.2f, #numwindows:%d, %s", imAcq->currentFrame - 1,
+                fps, tld->detectorCascade->numWindows, learningString);
             CvScalar yellow = CV_RGB(255, 255, 0);
             CvScalar blue = CV_RGB(0, 0, 255);
             CvScalar black = CV_RGB(0, 0, 0);
             CvScalar white = CV_RGB(255, 255, 255);
+            CvScalar red = CV_RGB(255, 0, 0);
 
             if (tld->currBB != NULL)
             {
-                CvScalar rectangleColor = (confident) ? blue : yellow;
-                cvRectangle(img, tld->currBB->tl(), tld->currBB->br(), rectangleColor, 8, 8, 0);
-
-                if (showTrajectory)
-                {
-                    CvPoint center = cvPoint(tld->currBB->x + tld->currBB->width / 2, tld->currBB->y + tld->currBB->height / 2);
-                    cvLine(img, cvPoint(center.x - 2, center.y - 2), cvPoint(center.x + 2, center.y + 2), rectangleColor, 2);
-                    cvLine(img, cvPoint(center.x - 2, center.y + 2), cvPoint(center.x + 2, center.y - 2), rectangleColor, 2);
-                    trajectory.addPoint(center, rectangleColor);
-                }
-            }
-            else if (showTrajectory)
-            {
-                trajectory.addPoint(cvPoint(-1, -1), cvScalar(-1, -1, -1));
-            }
-
-            if (showTrajectory)
-            {
-                trajectory.drawTrajectory(img);
+                CvScalar rectangleColor = red;
+                cvRectangle(img, tld->currBB->tl(), tld->currBB->br(), rectangleColor, 2, 8, 0);
             }
 
             CvFont font;
-            cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, .5, .5, 0, 1, 8);
-            cvRectangle(img, cvPoint(0, 0), cvPoint(img->width, 50), black, CV_FILLED, 8, 0);
-            cvPutText(img, string, cvPoint(25, 25), &font, white);
-
-            if (showForeground)
-            {
-                for (size_t i = 0; i < tld->detectorCascade->detectionResult->fgList->size(); i++)
-                {
-                    Rect r = tld->detectorCascade->detectionResult->fgList->at(i);
-                    cvRectangle(img, r.tl(), r.br(), white, 1);
-                }
-            }
+            cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, .5, .5, 0, 2, 8);
+            //cvRectangle(img, cvPoint(0, 0), cvPoint(img->width, 50), black, CV_FILLED, 8, 0);
+            cvPutText(img, string, cvPoint(25, 25), &font, red);
 
             if (showOutput)
             {
                 gui->showImage(img);
                 char key = gui->getKey();
 
-                if (key == 'q') break;
+                if (key == 'q')
+                    break;
 
-                if (key == 'b')
-                {
-                    ForegroundDetector *fg = tld->detectorCascade->foregroundDetector;
+                if (key == 'p')
+                    paused = !paused;
 
-                    if (fg->bgImg.empty())
-                    {
-                        fg->bgImg = grey.clone();
-                    }
-                    else
-                    {
-                        fg->bgImg.release();
-                    }
-                }
+                if (paused && key == 's')
+                    step = true;
 
                 if (key == 'c')
                 {
@@ -241,16 +209,6 @@ void Main::doWork()
                     printf("alternating: %d\n", tld->alternating);
                 }
 
-                if (key == 'e')
-                {
-                    tld->writeToFile(modelExportFile);
-                }
-
-                if (key == 'i')
-                {
-                    tld->readFromFile(modelPath);
-                }
-
                 if (key == 'r')
                 {
                     CvRect box;
@@ -261,8 +219,7 @@ void Main::doWork()
                     }
 
                     Rect r = Rect(box);
-
-                    tld->selectObject(grey, &r);
+                    tld->selectObject(colorImage, &r);
                 }
             }
 
@@ -283,11 +240,6 @@ void Main::doWork()
 
     cvReleaseImage(&img);
     img = NULL;
-
-    if (exportModelAfterRun)
-    {
-        tld->writeToFile(modelExportFile);
-    }
 
     if (resultsFile)
     {

@@ -1,39 +1,28 @@
 # Introduction
 
-This is a C++ implementation of OpenTLD that was originally published in MATLAB by Zdenek Kalal. OpenTLD is used for tracking objects in video streams. What makes this algorithm outstanding is that it does not make use of any training data. This implementation is based solely on open source libraries, meaning that you do not need any commercial products to compile or run it.
+This is a fork of the [C++ implementation of OpenTLD](https://github.com/gnebehay/OpenTLD) called CFtld.
+OpenTLD was originally proposed in [1] and implemented by Georg Nebehay in C++.
 
-The easiest way to get started is to download the precompiled [binaries](https://github.com/gnebehay/OpenTLD/releases) that are available for Windows and Ubuntu 12.04.  
-There is also a [PPA](https://launchpad.net/~opentld/+archive/ppa) available for Ubuntu 12.04. You just have to execute these commands:
-```
-sudo add-apt-repository ppa:opentld/ppa
-sudo apt-get update
-sudo apt-get install opentld
-```
+This fork uses C++ implementations of correlation filter based trackers as short-term trackers. Both short-term trackers are modified variants of the visual trackers proposed in [2,3].
+The short-term trackers are extended with target loss detection capabilities as in [4] and use the C++ implementation [5] of the FHOG features proposed in [6]. More implementation details of the short-term trackers can be found [here](src/3rdparty/cf_tracking/README.md). The detection cascade is only used to suggest possible target locations to the short-term trackers for redetection purposes. It cannot reinitialize the short-term trackers. The short-term trackers decide whether a suggested patch actually contains the target.
 
-If you have a webcam attached to your PC, you can simply execute opentld (on Linux) or opentld.exe (on Windows) in order to
-try it out. You can use the graphical configuration dialog as well, you just have to execite qopentld (on Linux) or qopentld.exe
-(on Windows).  
-For other configuration options, please see below.
-
-A documentation of the internals as well as other possibly helpful information is contained in this [master thesis](https://github.com/downloads/gnebehay/OpenTLD/gnebehay_thesis_msc.pdf).
+The system starts with the KCFcpp as default short-term tracker.
 
 # Usage
-## Keyboard shortcuts
-
+If you have a webcam attached to your PC, you can simply execute cftld (on Linux) or cftld.exe (on Windows) in order to
+try it out.
+### Keyboard shortcuts
+* `r` select a target
 * `q` quit
-* `b` remember current frame as background model / clear background
-* `c` clear model and stop tracking  git
 * `l` toggle learning
 * `a` toggle alternating mode (if true, detector is switched off when tracker is available)
-* `e` export model to file specified in configuration parameter "modelExportFile"
-* `i` import model from file specified in configuration parameter "modelPath"
-* `r` clear model, let user reinit tracking
 
-## Command line options
-### Synopsis
-`opentld [option arguments] [arguments]`
+### Command line options
+#### Synopsis
+`cftld [option arguments] [arguments]`
 
-### option arguments
+#### option arguments
+* `-x Use DSSTcpp instead of KCFcpp as short-term tracker. KCFcpp is the default short-term tracker.`
 * `[-a <startFrameNumber>]` video starts at the frameNumber _startFrameNumber_
 * `[-b <x,y,w,h>]` Initial bounding box
 * `[-d <device>]` select input device: _device_=(IMGS|CAM|VID|STREAM)  
@@ -41,12 +30,10 @@ A documentation of the internals as well as other possibly helpful information i
 	_CAM_: capture from connected camera  
 	_VID_: capture from a video  
 	_STREAM_: capture from RTSP stream
-* `[-e <path>]` export model after run to _path_
 * `[-f]` shows foreground
 * `[-i <path>]` _path_ to the images or to the video.
 * `[-j <number>]` show trajectory for the last _number_ frames
 * `[-h]` shows help
-* `[-m <path>]` if specified load a model from _path_. An initialBoundingBox must be specified or selectManually must be true.
 * `[-n <number>]` Specifies the video device to use (defaults to 0). Useful to select a different camera when multiple cameras are connected.
 * `[-p path]` prints results into the file _path_
 * `[-s]` if set, user can select initial bounding box
@@ -55,73 +42,91 @@ A documentation of the internals as well as other possibly helpful information i
 	If _lastFrameNumber_ is 0 or the option argument isn't specified means
 	all frames are taken.
 
-### Arguments
+#### Arguments
 `[CONFIG_FILE]` path to config file
 
-## Config file
-Look into the [sample-config-file](https://github.com/gnebehay/OpenTLD/blob/master/res/conf/config-sample.cfg) for more information.
+### Config files
+Refer to the sample folder to see usage and config file examples.
 
-# Building
-## Dependencies
-* OpenCV
+# Build
+### Dependencies
+* C++11
+* OpenCV 3.0
 * CMake
-* libconfig++ (optional)
-* Qt4 (optional)
+* libconfig++ (provided)
+* SSE2-capable CPU
 
-## Compiling
-### CMake
-OpenTLD uses CMake to create native build environments such as make, Eclipse, Microsoft Visual Studio.
-If you need help look at [Running CMake](http://www.cmake.org/cmake/help/runningcmake.html).
+### Windows 7
+* Set environment variables according to http://docs.opencv.org/doc/tutorials/introduction/windows_install/windows_install.html
+* Launch cmake-gui, create a build folder and configure.
+* Open CF_TLD.sln in Visual Studio and compile the project `opentld`.
 
-You can use `cmake-gui`, if you need a graphical user interface.
-
-Use CMake to build the project. You can use "cmake-gui", if you need a graphical user interface.
-
-__Gui__  
-* Specify the source path (root path of the dictionary) and the binary path (where to build the program, out
-	  of source build recommended)
-* Configure
-* Select compiler
-* Adjust the options (if needed)
-* Configure
-* Generate
-
-__Command line__  
-If you have uncompressed the source in $OPENTLD, type in a console:
-```bash
-cd $OPENTLD
-mkdir ../build
-cd ../build
-cmake ../$OPENTLD -DBUILD_QOPENTLD=ON -DUSE_SYSTEM_LIBS=OFF
+### Ubuntu 14.04
+* Install OpenCV 3.0 and CMake.
+* Configure and compile:
+```
+mkdir <src-dir>/build
+cd <src-dir>/build
+cmake ../
+make -j 8
 ```
 
-__CMake options__  
-* `BUILD_QOPENTLD` build the graphical configuration dialog (requieres Qt)
-* `USE_SYSTEM_LIBS` don't use the included cvblob version but the installed version (requieres cvblob)
+# Commercial Use (US)
+The code using linear correlation filters may be affected by a US patent. If you want to use this code commercially in the US please refer to http://www.cs.colostate.edu/~vision/ocof_toolset_2012/index.php for possible patent claims.
 
-### Windows (Microsoft Visual Studio)
-Navigate to the binary directory and build the solutions you want (You have to compile in RELEASE mode):
-* `opentld` build the project
-* `INSTALL` install the project
+# References
+If you reuse this code for a scientific publication, please cite the related publications (dependent on what parts of the code you reuse):
 
-_Note_: `vcomp.lib` is necessary when you try to compile it with OpenMP support and the
-Express versions of MSVC. This file is included in the Windows Server SDK.
+[1]
+```
+@article{kalal2012TLD,
+title={Tracking-Learning-Detection},
+author={Kalal, Zdenek and Mikolajczyk, Krystian and Matas, Jiri},
+journal={Pattern Analysis and Machine Intelligence, IEEE Transactions on},
+year={2012}}
+```
 
-### Linux (make)
-Navigate with the terminal to the build directory
-* `make` build the project
-* `make install` build and install the project
+[2]
+```
+@article{henriques2015tracking,
+title = {High-Speed Tracking with Kernelized Correlation Filters},
+author = {Henriques, J. F. and Caseiro, R. and Martins, P. and Batista, J.},
+journal = {Pattern Analysis and Machine Intelligence, IEEE Transactions on},
+year = {2015}
+```
 
-### Mac
-* `brew install python`
-* `brew install gfortran`
-* `easy_install numpy`
-* `brew install cmake`
-* `brew install opencv`
-* `cmake` build the project
 
-# Debian package
-* Navigate with the terminal into the root dictionary of OpenTLD (OpenTLD/)
-* Type `debuild -us -uc`
-* Delete the temporary files in the source tree with `debuild clean`
+[3]
+```
+@inproceedings{danelljan2014dsst,
+title={Accurate Scale Estimation for Robust Visual Tracking},
+author={Danelljan, Martin and H{\"a}ger, Gustav and Khan, Fahad Shahbaz and Felsberg, Michael},
+booktitle={Proceedings of the British Machine Vision Conference BMVC},
+year={2014}}
+```
 
+[4]
+```
+@inproceedings{bolme2010mosse,
+author={Bolme, David S. and Beveridge, J. Ross and Draper, Bruce A. and Yui Man Lui},
+title={Visual Object Tracking using Adaptive Correlation Filters},
+booktitle={Conference on Computer Vision and Pattern Recognition (CVPR)},
+year={2010}}
+```
+
+[5]
+```
+@misc{PMT,
+author = {Piotr Doll\'ar},
+title = {{P}iotr's {C}omputer {V}ision {M}atlab {T}oolbox ({PMT})},
+howpublished = {\url{http://vision.ucsd.edu/~pdollar/toolbox/doc/index.html}}}
+```
+
+[6]
+```
+@article{lsvm-pami,
+title = "Object Detection with Discriminatively Trained Part Based Models",
+author = "Felzenszwalb, P. F. and Girshick, R. B. and McAllester, D. and Ramanan, D.",
+journal = "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+year = "2010", volume = "32", number = "9", pages = "1627--1645"}
+```

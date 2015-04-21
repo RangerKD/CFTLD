@@ -38,7 +38,7 @@ namespace tld
     {
         void calcMeanRect(std::vector<int> * indices);
         void calcDistances(float *distances);
-        void cluster(float *distances, int *clusterIndices);
+        void cluster(float *distances);
     public:
         int *windows;
         int numWindows;

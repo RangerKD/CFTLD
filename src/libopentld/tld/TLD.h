@@ -28,43 +28,49 @@
 #define TLD_H_
 
 #include <opencv/cv.h>
-
-#include "MedianFlowTracker.h"
+#include <memory>
+#include <random>
+#include "opencv2/core/core.hpp"
+#include "cf_tracker.hpp"
 #include "DetectorCascade.h"
 
 namespace tld
 {
     class TLD
     {
+    private:
         void storeCurrentData();
-        void fuseHypotheses();
+        void fuseHypotheses(const cv::Mat& colorImg);
         void learn();
         void initialLearning();
+        void deleteCurrentBB();
+        std::shared_ptr<cf_tracking::CfTracker> tracker;
     public:
+        DetectorCascade *detectorCascade;
+        NNClassifier *nnClassifier;
+        cv::Mat currImg;
+        cv::Rect *currBB;
+        cv::Rect trackerBB;
+        bool valid;
+        bool isTrackerValid;
+        bool runTracker;
+        float currConf;
+        bool learning;
+
+        bool hasImageDimensions;
         bool trackerEnabled;
         bool detectorEnabled;
         bool learningEnabled;
         bool alternating;
-
-        MedianFlowTracker *medianFlowTracker;
-        DetectorCascade *detectorCascade;
-        NNClassifier *nnClassifier;
-        bool valid;
-        bool wasValid;
-        cv::Mat prevImg;
-        cv::Mat currImg;
-        cv::Rect *prevBB;
-        cv::Rect *currBB;
-        float currConf;
-        bool learning;
+        std::shared_ptr<std::mt19937> rng;
+        int seed;
 
         TLD();
         virtual ~TLD();
+        void init(bool useDsstTracker);
         void release();
         void selectObject(const cv::Mat &img, cv::Rect *bb);
-        void processImage(const cv::Mat &img);
-        void writeToFile(const char *path);
-        void readFromFile(const char *path);
+        void processImage(cv::Mat &img);
     };
 } /* namespace tld */
 #endif /* TLD_H_ */

@@ -25,6 +25,7 @@
 #include "Config.h"
 #include "ImAcq.h"
 #include "Gui.h"
+#include <random>
 
 using tld::Config;
 using tld::Gui;
@@ -32,7 +33,6 @@ using tld::Settings;
 
 int main(int argc, char **argv)
 {
-
     Main *main = new Main();
     Config config;
     ImAcq *imAcq = imAcqAlloc();
@@ -41,18 +41,17 @@ int main(int argc, char **argv)
     main->gui = gui;
     main->imAcq = imAcq;
 
-    if(config.init(argc, argv) == PROGRAM_EXIT)
+    if (config.init(argc, argv) == PROGRAM_EXIT)
     {
         return EXIT_FAILURE;
     }
 
     config.configure(main);
 
-    srand(main->seed);
-
+    main->tld->seed = main->seed;
     imAcqInit(imAcq);
 
-    if(main->showOutput)
+    if (main->showOutput)
     {
         gui->init();
     }

@@ -24,7 +24,8 @@
  */
 
 #include "NNClassifier.h"
-
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/highgui/highgui.hpp"
 #include "DetectorCascade.h"
 #include "TLDUtil.h"
 
@@ -35,8 +36,8 @@ namespace tld
 {
     NNClassifier::NNClassifier()
     {
-        thetaFP = .5;
-        thetaTP = .65;
+        thetaFP = .5f;
+        thetaTP = .55f;
 
         truePositives = new vector<NormalizedPatch>();
         falsePositives = new vector<NormalizedPatch>();
@@ -73,7 +74,7 @@ namespace tld
 
         // normalization to <0,1>
 
-        return (corr / sqrt(norm1 * norm2) + 1) / 2.0;
+        return static_cast<float>((corr / sqrt(norm1 * norm2) + 1) / 2.0);
     }
 
     float NNClassifier::classifyPatch(NormalizedPatch *patch)
@@ -139,6 +140,18 @@ namespace tld
         return classifyPatch(&patch);
     }
 
+    void NNClassifier::showWindow(const Mat &img, int windowIdx)
+    {
+        NormalizedPatch patch;
+
+        int *bbox = &windows[TLD_WINDOW_SIZE * windowIdx];
+        tldExtractNormalizedPatchBB(img, bbox, patch.values);
+        Mat temp(TLD_PATCH_SIZE, TLD_PATCH_SIZE, CV_32F, patch.values);
+        normalize(temp, temp, 0, 1, cv::NORM_MINMAX);
+        resize(temp, temp, Size(0, 0), 5.0, 5.0);
+        imshow("NN positive detection", temp);
+    }
+
     bool NNClassifier::filter(const Mat &img, int windowIdx)
     {
         if (!enabled) return true;
@@ -149,7 +162,8 @@ namespace tld
         {
             return false;
         }
-
+        //std::cout << "NN conf: " << conf << std::endl;
+        //showWindow(img, windowIdx);
         return true;
     }
 

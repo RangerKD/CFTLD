@@ -57,7 +57,7 @@ namespace tld
     {
         variances = new float[numWindows];
         posteriors = new float[numWindows];
-        featureVectors = new int[numWindows * numTrees];
+        featureVectors = new int[numWindows * numTrees]{};
         delete confidentIndices;
         confidentIndices = new vector<int>();
     }

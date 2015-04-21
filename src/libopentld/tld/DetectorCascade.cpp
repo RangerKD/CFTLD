@@ -45,7 +45,7 @@ namespace tld
         imgHeight = -1;
         imgWidth = -1;
 
-        shift = 0.1;
+        shift = 0.1f;
         minScale = -10;
         maxScale = 10;
         minSize = 25;
@@ -56,7 +56,6 @@ namespace tld
 
         initialised = false;
 
-        foregroundDetector = new ForegroundDetector();
         varianceFilter = new VarianceFilter();
         ensembleClassifier = new EnsembleClassifier();
         nnClassifier = new NNClassifier();
@@ -69,7 +68,6 @@ namespace tld
     {
         release();
 
-        delete foregroundDetector;
         delete varianceFilter;
         delete ensembleClassifier;
         delete nnClassifier;
@@ -77,7 +75,7 @@ namespace tld
         delete clustering;
     }
 
-    void DetectorCascade::init()
+    void DetectorCascade::init(std::shared_ptr<std::mt19937> rng)
     {
         if (imgWidth == -1 || imgHeight == -1 || imgWidthStep == -1 || objWidth == -1 || objHeight == -1)
         {
@@ -89,7 +87,7 @@ namespace tld
 
         propagateMembers();
 
-        ensembleClassifier->init();
+        ensembleClassifier->init(rng);
 
         initialised = true;
     }
@@ -110,9 +108,6 @@ namespace tld
         clustering->windows = windows;
         clustering->numWindows = numWindows;
 
-        foregroundDetector->minBlobSize = minSize * minSize;
-
-        foregroundDetector->detectionResult = detectionResult;
         varianceFilter->detectionResult = detectionResult;
         ensembleClassifier->detectionResult = detectionResult;
         nnClassifier->detectionResult = detectionResult;
@@ -128,7 +123,6 @@ namespace tld
 
         initialised = false;
 
-        foregroundDetector->release();
         ensembleClassifier->release();
         nnClassifier->release();
 
@@ -169,7 +163,7 @@ namespace tld
 
         int windowIndex = 0;
 
-        scales = new Size[maxScale - minScale + 1];
+        scales = new Size[maxScale - minScale + 1]{};
 
         numWindows = 0;
 
@@ -177,15 +171,15 @@ namespace tld
 
         for (int i = minScale; i <= maxScale; i++)
         {
-            float scale = pow(1.2, i);
-            int w = (int)objWidth * scale;
-            int h = (int)objHeight * scale;
+            float scale = pow(1.2f, i);
+            int w = static_cast<int>(objWidth * scale);
+            int h = static_cast<int>(objHeight * scale);
             int ssw, ssh;
 
             if (useShift)
             {
-                ssw = max<float>(1, w * shift);
-                ssh = max<float>(1, h * shift);
+                ssw = static_cast<int>(max<float>(1, w * shift));
+                ssh = static_cast<int>(max<float>(1, h * shift));
             }
             else
             {
@@ -193,19 +187,21 @@ namespace tld
                 ssh = 1;
             }
 
-            if (w < minSize || h < minSize || w > scanAreaW || h > scanAreaH) continue;
+            if (w < minSize || h < minSize || w > scanAreaW
+                || h > scanAreaH)
+                continue;
 
             scales[scaleIndex].width = w;
             scales[scaleIndex].height = h;
 
             scaleIndex++;
 
-            numWindows += floor((float)(scanAreaW - w + ssw) / ssw) * floor((float)(scanAreaH - h + ssh) / ssh);
+            numWindows += static_cast<int>(floor((float)(scanAreaW - w + ssw) / ssw) * floor((float)(scanAreaH - h + ssh) / ssh));
         }
 
         numScales = scaleIndex;
 
-        windows = new int[TLD_WINDOW_SIZE * numWindows];
+        windows = new int[TLD_WINDOW_SIZE * numWindows]{};
 
         for (scaleIndex = 0; scaleIndex < numScales; scaleIndex++)
         {
@@ -216,8 +212,8 @@ namespace tld
 
             if (useShift)
             {
-                ssw = max<float>(1, w * shift);
-                ssh = max<float>(1, h * shift);
+                ssw = static_cast<int>(max<float>(1, w * shift));
+                ssh = static_cast<int>(max<float>(1, h * shift));
             }
             else
             {
@@ -246,7 +242,7 @@ namespace tld
     //Order: scale->tree->feature
     void DetectorCascade::initWindowOffsets()
     {
-        windowOffsets = new int[TLD_WINDOW_OFFSET_SIZE * numWindows];
+        windowOffsets = new int[TLD_WINDOW_OFFSET_SIZE * numWindows]{};
         int *off = windowOffsets;
 
         int windowSize = TLD_WINDOW_SIZE;
@@ -275,38 +271,12 @@ namespace tld
         }
 
         //Prepare components
-        foregroundDetector->nextIteration(img); //Calculates foreground
         varianceFilter->nextIteration(img); //Calculates integral images
         ensembleClassifier->nextIteration(img);
 
 #pragma omp parallel for
-
-        for (int i = 0; i < numWindows; i++)
+        for (int i = 0; i < numWindows; ++i)
         {
-            int *window = &windows[TLD_WINDOW_SIZE * i];
-
-            if (foregroundDetector->isActive())
-            {
-                bool isInside = false;
-
-                for (size_t j = 0; j < detectionResult->fgList->size(); j++)
-                {
-                    int bgBox[4];
-                    tldRectToArray(detectionResult->fgList->at(j), bgBox);
-
-                    if (tldIsInside(window, bgBox))  //TODO: This is inefficient and should be replaced by a quadtree
-                    {
-                        isInside = true;
-                    }
-                }
-
-                if (!isInside)
-                {
-                    detectionResult->posteriors[i] = 0;
-                    continue;
-                }
-            }
-
             if (!varianceFilter->filter(i))
             {
                 detectionResult->posteriors[i] = 0;
@@ -323,6 +293,7 @@ namespace tld
                 continue;
             }
 
+#pragma omp critical
             detectionResult->confidentIndices->push_back(i);
         }
 

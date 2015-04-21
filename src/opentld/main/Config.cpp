@@ -37,14 +37,13 @@ namespace tld
         "    VID: capture from a video\n"
         "    STREAM: capture from a stream\n"
         "[-e <path>] export model after run to <path>\n"
-        "[-f] shows foreground\n"
         "[-i <path>] <path> to the images or to the video\n"
         "[-h] shows help\n"
         "[-j <number>] specifies the <number> of the last frames which are considered by the trajectory; 0 disables the trajectory\n"
-        "[-m <path>] if specified load a model from <path>. An initialBoundingBox must be specified or selectManually must be true.\n"
         "[-n <number>] specifies which camera device to use.\n"
         "[-p <path>] prints results into the file <path>\n"
         "[-s] if set, user can select initial bounding box\n"
+        "[-x] use dsst tracker; otherwise kcf tracker is used"
         "[-t <theta>] threshold for determining positive results\n"
         "[-z <lastFrameNumber>] video ends at the frameNumber <lastFrameNumber>.\n"
         "    If <lastFrameNumber> is 0 or the option argument isn't specified means\n"
@@ -59,15 +58,13 @@ namespace tld
         m_lastFrameSet(false),
         m_trajectorySet(false),
         m_showDetectionsSet(false),
-        m_showForegroundSet(false),
         m_thetaSet(false),
         m_printResultsSet(false),
         m_camNoSet(false),
         m_imagePathSet(false),
-        m_modelPathSet(false),
         m_initialBBSet(false),
         m_showOutputSet(false),
-        m_exportModelAfterRunSet(false)
+        m_useDsstTrackerSet(false)
     {
     }
 
@@ -85,7 +82,7 @@ namespace tld
         // check cli arguments
         int c;
 
-        while ((c = getopt(argc, argv, "a:b:d:e:fhi:j:m:n:Op:qst:z:")) != -1)
+        while ((c = getopt(argc, argv, "a:b:d:e:fhi:j:m:n:Op:qst:z:x")) != -1)
         {
             switch (c)
             {
@@ -105,7 +102,6 @@ namespace tld
 
                 break;
             case 'd':
-
                 if (!strcmp(optarg, "CAM"))
                 {
                     m_settings.m_method = IMACQ_CAM;
@@ -128,14 +124,6 @@ namespace tld
                 }
 
                 break;
-            case 'e':
-                m_settings.m_exportModelAfterRun = true;
-                m_settings.m_modelExportFile = optarg;
-                break;
-            case 'f':
-                m_settings.m_showForeground = true;
-                m_showForegroundSet = true;
-                break;
             case 'h':
                 cout << help_text;
                 return PROGRAM_EXIT;
@@ -147,11 +135,6 @@ namespace tld
             case 'j':
                 m_settings.m_trajectory = atoi(optarg);
                 m_trajectorySet = true;
-                break;
-            case 'm':
-                m_settings.m_loadModel = true;
-                m_settings.m_modelPath = optarg;
-                m_modelPathSet = true;
                 break;
             case 'n':
                 m_settings.m_camNo = atoi(optarg);
@@ -170,8 +153,12 @@ namespace tld
                 m_selectManuallySet = true;
                 break;
             case 't':
-                m_settings.m_threshold = atof(optarg);
+                m_settings.m_threshold = static_cast<float>(atof(optarg));
                 m_thetaSet = true;
+                break;
+            case 'x':
+                m_settings.m_useDsstTracker = true;
+                m_useDsstTrackerSet = true;
                 break;
             case 'z':
                 m_settings.m_lastFrame = atoi(optarg);
@@ -199,12 +186,14 @@ namespace tld
             }
             catch (const libconfig::FileIOException &fioex)
             {
-                cerr << "I/O error while reading config file." << endl;
+                cerr << "I/O error while reading config file." << endl
+                    << fioex.what() << endl;
                 return PROGRAM_EXIT;
             }
             catch (const libconfig::ParseException &pex)
             {
-                cerr << "ConfigFile: Parse error" << endl;
+                cerr << "ConfigFile: Parse error" << endl
+                    << pex.what() << endl;
                 return PROGRAM_EXIT;
             }
 
@@ -223,7 +212,8 @@ namespace tld
                 }
                 catch (const libconfig::SettingNotFoundException &nfex)
                 {
-                    cerr << "Error: Unable to read image path." << endl;
+                    cerr << "Error: Unable to read image path." << endl
+                        << nfex.what() << endl;
                     return PROGRAM_EXIT;
                 }
             }
@@ -237,7 +227,8 @@ namespace tld
                 }
                 catch (const libconfig::SettingNotFoundException &nfex)
                 {
-                    cerr << "Error: Unable to read stream URL." << endl;
+                    cerr << "Error: Unable to read stream URL." << endl
+                        << nfex.what() << endl;
                     return PROGRAM_EXIT;
                 }
             }
@@ -251,7 +242,8 @@ namespace tld
                 }
                 catch (const libconfig::SettingNotFoundException &nfex)
                 {
-                    cerr << "Error: Unable to read image path." << endl;
+                    cerr << "Error: Unable to read image path." << endl
+                        << nfex.what() << endl;
                     return PROGRAM_EXIT;
                 }
             }
@@ -271,7 +263,8 @@ namespace tld
                 }
                 catch (const libconfig::SettingNotFoundException &nfex)
                 {
-                    cerr << "Error: Unable to read image path." << endl;
+                    cerr << "Error: Unable to read image path." << endl
+                        << nfex.what() << endl;
                     return PROGRAM_EXIT;
                 }
             }
@@ -287,22 +280,6 @@ namespace tld
             // camNo
             if (!m_camNoSet)
                 m_cfg.lookupValue("acq.camNo", m_settings.m_camNo);
-
-            // loadModel
-            if (!m_modelPathSet)
-                m_cfg.lookupValue("loadModel", m_settings.m_loadModel);
-
-            // modelPath
-            if (!m_modelPathSet)
-                m_cfg.lookupValue("modelPath", m_settings.m_modelPath);
-
-            // check if loadModel and modelPath are set, if one of them is set
-            if (!m_modelPathSet)
-                if (m_settings.m_loadModel && m_settings.m_modelPath.empty())
-                {
-                cerr << "Error: modelPath must be set when using loadModel" << endl;
-                return PROGRAM_EXIT;
-                }
 
             // useProportionalShift
             m_cfg.lookupValue("detector.useProportionalShift", m_settings.m_useProportionalShift);
@@ -329,14 +306,6 @@ namespace tld
             m_cfg.lookupValue("detector.thetaP", m_settings.m_thetaP);
             m_cfg.lookupValue("detector.thetaN", m_settings.m_thetaN);
 
-            // backgroundFrame
-            // TODO
-            //const char * backgroundFrame = NULL;
-            //config_lookup_string(&m_config, "backgroundFrame", &backgroundFrame);
-            //if(backgroundFrame != NULL) {
-            //  classifier->background = imAcqLoadImg(imAcq, (char *)backgroundFrame, CV_LOAD_IMAGE_GRAYSCALE);
-            //}
-
             // showOutput
             if (!m_showOutputSet)
                 m_cfg.lookupValue("showOutput", m_settings.m_showOutput);
@@ -358,6 +327,9 @@ namespace tld
             // trackerEnabled
             m_cfg.lookupValue("trackerEnabled", m_settings.m_trackerEnabled);
 
+            // detectorEnabled
+            m_cfg.lookupValue("detectorEnabled", m_settings.m_detectorEnabled);
+
             // varianceFilterEnabled
             m_cfg.lookupValue("detector.varianceFilterEnabled", m_settings.m_varianceFilterEnabled);
 
@@ -366,6 +338,9 @@ namespace tld
 
             // nnClassifierEnabled
             m_cfg.lookupValue("detector.nnClassifierEnabled", m_settings.m_nnClassifierEnabled);
+
+            if (!m_useDsstTrackerSet)
+                m_cfg.lookupValue("useDsstTracker", m_settings.m_useDsstTracker);
 
             // selectManually
             if (!m_selectManuallySet)
@@ -381,23 +356,12 @@ namespace tld
             // showNotConfident
             m_cfg.lookupValue("showNotConfident", m_settings.m_showNotConfident);
 
-            // showForeground
-            if (!m_showForegroundSet)
-                m_cfg.lookupValue("showForeground", m_settings.m_showForeground);
-
             // showDetections
             if (!m_showDetectionsSet)
                 m_cfg.lookupValue("showDetections", m_settings.m_showDetections);
 
             // alternating
             m_cfg.lookupValue("alternating", m_settings.m_alternating);
-
-            // exportModelFile
-            m_cfg.lookupValue("modelExportFile", m_settings.m_modelExportFile);
-
-            // exportModelAfterRun
-            if (!m_exportModelAfterRunSet)
-                m_cfg.lookupValue("exportModelAfterRun", m_settings.m_exportModelAfterRun);
 
             // seed
             m_cfg.lookupValue("seed", m_settings.m_seed);
@@ -414,6 +378,7 @@ namespace tld
             }
             catch (const libconfig::SettingNotFoundException &nfex)
             {
+                (void)nfex; // avoid warning
                 // Ignore
             }
         }
@@ -435,21 +400,18 @@ namespace tld
 
         // main
         main->tld->trackerEnabled = m_settings.m_trackerEnabled;
+        main->tld->detectorEnabled = m_settings.m_detectorEnabled;
+        main->tld->init(m_settings.m_useDsstTracker);
         main->showOutput = m_settings.m_showOutput;
         main->showTrajectory = (m_settings.m_trajectory) ? true : false;
         main->trajectoryLength = m_settings.m_trajectory;
         main->printResults = (m_settings.m_printResults.empty()) ? NULL : m_settings.m_printResults.c_str();
         main->saveDir = (m_settings.m_outputDir.empty()) ? NULL : m_settings.m_outputDir.c_str();
         main->threshold = m_settings.m_threshold;
-        main->showForeground = m_settings.m_showForeground;
         main->showNotConfident = m_settings.m_showNotConfident;
         main->tld->alternating = m_settings.m_alternating;
         main->tld->learningEnabled = m_settings.m_learningEnabled;
         main->selectManually = m_settings.m_selectManually;
-        main->exportModelAfterRun = m_settings.m_exportModelAfterRun;
-        main->modelExportFile = m_settings.m_modelExportFile.c_str();
-        main->loadModel = m_settings.m_loadModel;
-        main->modelPath = (m_settings.m_modelPath.empty()) ? NULL : m_settings.m_modelPath.c_str();
         main->seed = m_settings.m_seed;
 
         if (m_settings.m_initialBoundingBox.size() > 0)

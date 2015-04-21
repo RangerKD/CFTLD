@@ -27,7 +27,6 @@
 #define DETECTORCASCADE_H_
 
 #include "DetectionResult.h"
-#include "ForegroundDetector.h"
 #include "VarianceFilter.h"
 #include "EnsembleClassifier.h"
 #include "Clustering.h"
@@ -69,7 +68,6 @@ namespace tld
         bool initialised;
 
         //Components of Detector Cascade
-        ForegroundDetector *foregroundDetector;
         VarianceFilter *varianceFilter;
         EnsembleClassifier *ensembleClassifier;
         Clustering *clustering;
@@ -82,7 +80,7 @@ namespace tld
         DetectorCascade();
         ~DetectorCascade();
 
-        void init();
+        void init(std::shared_ptr<std::mt19937> rng);
 
         void initWindowOffsets();
         void initWindowsAndScales();

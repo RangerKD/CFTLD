@@ -38,6 +38,7 @@ namespace tld
     class NNClassifier
     {
         float ncc(float *f1, float *f2);
+        void showWindow(const cv::Mat &img, int windowIdx);
     public:
         bool enabled;
 

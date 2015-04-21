@@ -27,6 +27,8 @@
 #define ENSEMBLECLASSIFIER_H_
 
 #include <opencv/cv.h>
+#include <memory>
+#include <random>
 
 namespace tld
 {
@@ -63,8 +65,8 @@ namespace tld
 
         EnsembleClassifier();
         virtual ~EnsembleClassifier();
-        void init();
-        void initFeatureLocations();
+        void init(std::shared_ptr<std::mt19937> rng);
+        void initFeatureLocations(std::shared_ptr<std::mt19937> rng);
         void initFeatureOffsets();
         void initPosteriors();
         void release();

@@ -107,7 +107,7 @@ namespace tld
 
     //TODO: Change function names
     float tldOverlapRectRect(cv::Rect r1, cv::Rect r2);
-    void tldOverlapOne(int *windows, int numWindows, int index, std::vector<int> * indices, float *overlap);
+    void tldOverlapOne(int *windows, int index, std::vector<int> * indices, float *overlap);
     void tldOverlap(int *windows, int numWindows, int *boundary, float *overlap);
     void tldOverlapRect(int *windows, int numWindows, cv::Rect *boundary, float *overlap);
 

@@ -21,6 +21,7 @@
 
 #include "NormalizedPatch.h"
 #include "DetectorCascade.h"
+#include "opencv2/imgproc/imgproc.hpp"
 
 using namespace std;
 using namespace cv;
@@ -163,7 +164,7 @@ namespace tld
         return intersection / (float)(area1 + area2 - intersection);
     }
 
-    void tldOverlapOne(int *windows, int numWindows, int index, vector<int> * indices, float *overlap)
+    void tldOverlapOne(int *windows, int index, vector<int> * indices, float *overlap)
     {
         for (size_t i = 0; i < indices->size(); i++)
         {

@@ -83,15 +83,13 @@ namespace tld
         bool m_lastFrameSet;
         bool m_trajectorySet;
         bool m_showDetectionsSet;
-        bool m_showForegroundSet;
         bool m_thetaSet;
         bool m_printResultsSet;
         bool m_camNoSet;
         bool m_imagePathSet;
-        bool m_modelPathSet;
         bool m_initialBBSet;
         bool m_showOutputSet;
-        bool m_exportModelAfterRunSet;
+        bool m_useDsstTrackerSet;
         ///@}
     };
 

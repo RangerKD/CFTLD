@@ -30,6 +30,7 @@
 #include "TLD.h"
 #include "ImAcq.h"
 #include "Gui.h"
+#include "cf_tracker.hpp"
 
 enum Retval
 {
