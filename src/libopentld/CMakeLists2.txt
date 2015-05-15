@@ -28,4 +28,3 @@ add_library(libopentld
 
 target_link_libraries(libopentld ${OpenCV_LIBS})
 
-
