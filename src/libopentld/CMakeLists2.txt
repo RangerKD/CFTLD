@@ -5,7 +5,7 @@ include_directories(imacq
 
 link_directories(${OpenCV_LIB_DIR})
 
-add_library(libopentld
+add_library(libcftld
     ${CF_SOURCES}
     tld/Clustering.cpp
     tld/DetectionResult.cpp
@@ -26,5 +26,5 @@ add_library(libopentld
     tld/TLDUtil.h
     tld/VarianceFilter.h)
 
-target_link_libraries(libopentld ${OpenCV_LIBS})
+target_link_libraries(libcftld ${OpenCV_LIBS})
 
