@@ -176,11 +176,16 @@ namespace cf_tracking
         cv::Mat channels[NUMBER_OF_CHANNELS];
     };
 
+    
     template <class T>
-    using  FhogFeatureChannels = FeatureChannels_ < 31, T > ;
-
+    struct FhogFeatureChannels {
+      typedef FeatureChannels_ < 31, T > type;
+    };
+     
     template <class T>
-    using DsstFeatureChannels = FeatureChannels_ < 28, T > ;
+    struct DsstFeatureChannels {
+      typedef FeatureChannels_ < 28, T > type;
+    };
 }
 
 #endif

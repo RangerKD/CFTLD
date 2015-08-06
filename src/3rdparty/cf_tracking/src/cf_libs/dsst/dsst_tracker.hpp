@@ -50,7 +50,7 @@ References:
 in Proc. BMVC, 2014.
 
 [2] D. Bolme, et al.,
-“Visual Object Tracking using Adaptive Correlation Filters,”
+Visual Object Tracking using Adaptive Correlation Filters,
 in Proc. CVPR, 2010.
 */
 
@@ -78,27 +78,46 @@ namespace cf_tracking
 {
     struct DsstParameters
     {
-        double padding = static_cast<double>(1.6);
-        double outputSigmaFactor = static_cast<double>(0.05);
-        double lambda = static_cast<double>(0.01);
-        double learningRate = static_cast<double>(0.012);
-        int templateSize = 100;
-        int cellSize = 2;
+        DsstParameters() : 
+          padding(),
+          outputSigmaFactor(),
+          lambda(static_cast<double>(0.01)),
+          learningRate(static_cast<double>(0.012)),
+          templateSize(100),
+          cellSize(2),
+          enableTrackingLossDetection(false),
+          psrThreshold(13.5),
+          psrPeakDel(1),
+          enableScaleEstimator(true),
+          scaleSigmaFactor(static_cast<double>(0.25)),
+          scaleStep(static_cast<double>(1.02)),
+          scaleCellSize(4),
+          numberOfScales(33), 
+          originalVersion(false),
+          resizeType(cv::INTER_LINEAR),
+          useFhogTranspose(false)
+        {};
+        double padding;
+        double outputSigmaFactor;
+        double lambda;
+        double learningRate;
+        int templateSize;
+        int cellSize;
 
-        bool enableTrackingLossDetection = false;
-        double psrThreshold = 13.5;
-        int psrPeakDel = 1;
+        bool enableTrackingLossDetection;
+        double psrThreshold;
+        int psrPeakDel;
 
-        bool enableScaleEstimator = true;
-        double scaleSigmaFactor = static_cast<double>(0.25);
-        double scaleStep = static_cast<double>(1.02);
-        int scaleCellSize = 4;
-        int numberOfScales = 33;
+        bool enableScaleEstimator;
+        double scaleSigmaFactor;
+        double scaleStep;
+        int scaleCellSize;
+        int numberOfScales;
 
         //testing
-        bool originalVersion = false;
-        int resizeType = cv::INTER_LINEAR;
-        bool useFhogTranspose = false;
+        bool originalVersion;
+        int resizeType;
+        bool useFhogTranspose;
     };
 
     class DsstTracker : public CfTracker
@@ -109,13 +128,16 @@ namespace cf_tracking
         typedef cv::Size_<T> Size;
         typedef cv::Point_<T> Point;
         typedef cv::Rect_<T> Rect;
-        typedef FhogFeatureChannels<T> FFC;
-        typedef DsstFeatureChannels<T> DFC;
+        typedef typename FhogFeatureChannels<T>::type FFC;
+        typedef typename DsstFeatureChannels<T>::type DFC;
         typedef mat_consts::constants<T> consts;
 
         DsstTracker(DsstParameters paras, DsstDebug<T>* debug = 0)
             : _isInitialized(false),
             _scaleEstimator(0),
+            cvFhog(0),
+            calcDft(0),
+            _frameIdx(1),
             _PADDING(static_cast<T>(paras.padding)),
             _OUTPUT_SIGMA_FACTOR(static_cast<T>(paras.outputSigmaFactor)),
             _LAMBDA(static_cast<T>(paras.lambda)),
@@ -209,6 +231,33 @@ namespace cf_tracking
 
             return reinit_(image, bb);
         }
+
+
+
+      virtual void set_learning_rate(double learningRate){
+        _LEARNING_RATE  = static_cast<T>(learningRate);
+      }
+
+      virtual void set_padding(double padding){
+        _PADDING  = static_cast<T>(padding);
+      }
+      virtual void set_lambda( double lambda){
+        _LAMBDA  = static_cast<T>(lambda);
+      }
+      virtual void set_output_sigma_factor(double outputSigmaFactor){
+        _OUTPUT_SIGMA_FACTOR  = static_cast<T>(outputSigmaFactor);
+      }
+
+      virtual void set_psr_threshold(double psrThreshold){
+        _PSR_THRESHOLD  = static_cast<T>(psrThreshold);
+      }
+      virtual void set_cell_size(int cellSize){
+        _CELL_SIZE = cellSize;
+      }
+      virtual void set_template_size(int templateSize){
+        _TEMPLATE_SIZE = templateSize;
+      }
+
 
         virtual bool update(const cv::Mat& image, cv::Rect_<int>& boundingBox)
         {
@@ -343,9 +392,6 @@ namespace cf_tracking
         }
 
     private:
-        DsstTracker& operator=(const DsstTracker&)
-        {}
-
         bool reinit_(const cv::Mat& image, Rect& boundingBox)
         {
             _pos.x = floor(boundingBox.x) + floor(boundingBox.width * consts::c0_5);
@@ -387,7 +433,7 @@ namespace cf_tracking
             cosWindowX = hanningWindow<T>(_yf.cols);
             _cosWindow = cosWindowY * cosWindowX.t();
 
-            std::shared_ptr<DFC> hfNum(0);
+            std::shared_ptr<DFC> hfNum(new DFC);
             cv::Mat hfDen;
 
             if (getTranslationTrainingData(image, hfNum, hfDen, _pos) == false)
@@ -410,7 +456,7 @@ namespace cf_tracking
         bool getTranslationTrainingData(const cv::Mat& image, std::shared_ptr<DFC>& hfNum,
             cv::Mat& hfDen, const Point& pos) const
         {
-            std::shared_ptr<DFC> xt(0);
+            std::shared_ptr<DFC> xt(new DFC);
 
             if (getTranslationFeatures(image, xt, pos, _scale) == false)
                 return false;
@@ -576,7 +622,7 @@ namespace cf_tracking
             T& newScale) const
         {
             // find translation
-            std::shared_ptr<DFC> xt(0);
+            std::shared_ptr<DFC> xt(new DFC);
 
             if (getTranslationFeatures(image, xt, newPos, newScale) == false)
                 return false;
@@ -639,7 +685,7 @@ namespace cf_tracking
         {
             _pos = newPos;
             _scale = newScale;
-            std::shared_ptr<DFC> hfNum(0);
+            std::shared_ptr<DFC> hfNum(new DFC);
             cv::Mat hfDen;
 
             if (getTranslationTrainingData(image, hfNum, hfDen, _pos) == false)
@@ -662,11 +708,11 @@ namespace cf_tracking
     private:
         typedef void(*cvFhogPtr)
             (const cv::Mat& img, std::shared_ptr<DFC>& cvFeatures, int binSize, int fhogChannelsToCopy);
-        cvFhogPtr cvFhog = 0;
+        cvFhogPtr cvFhog;
 
         typedef void(*dftPtr)
             (const cv::Mat& input, cv::Mat& output, int flags);
-        dftPtr calcDft = 0;
+        dftPtr calcDft;
 
         cv::Mat _cosWindow;
         cv::Mat _y;
@@ -681,24 +727,24 @@ namespace cf_tracking
         T _scale; // _scale is the scale of the template; not the target
         T _templateScaleFactor; // _templateScaleFactor is used to calc the target scale
         ScaleEstimator<T>* _scaleEstimator;
-        int _frameIdx = 1;
+        int _frameIdx;
         bool _isInitialized;
 
-        const double _MIN_AREA;
-        const double _MAX_AREA_FACTOR;
-        const T _PADDING;
-        const T _OUTPUT_SIGMA_FACTOR;
-        const T _LAMBDA;
-        const T _LEARNING_RATE;
-        const T _PSR_THRESHOLD;
-        const int _PSR_PEAK_DEL;
-        const int _CELL_SIZE;
-        const int _TEMPLATE_SIZE;
-        const std::string _ID;
-        const bool _ENABLE_TRACKING_LOSS_DETECTION;
-        const int _RESIZE_TYPE;
-        const bool _ORIGINAL_VERSION;
-        const bool _USE_CCS;
+        double _MIN_AREA;
+        double _MAX_AREA_FACTOR;
+        T _PADDING;
+        T _OUTPUT_SIGMA_FACTOR;
+        T _LAMBDA;
+        T _LEARNING_RATE;
+        T _PSR_THRESHOLD;
+        int _PSR_PEAK_DEL;
+        int _CELL_SIZE;
+        int _TEMPLATE_SIZE;
+        std::string _ID;
+        bool _ENABLE_TRACKING_LOSS_DETECTION;
+        int _RESIZE_TYPE;
+        bool _ORIGINAL_VERSION;
+        bool _USE_CCS;
 
         DsstDebug<T>* _debug;
     };

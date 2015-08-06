@@ -29,7 +29,7 @@ if(WIN32)
 endif(WIN32)
 
 set(OpenCV_STATIC OFF)
-find_package(OpenCV REQUIRED HINTS ${OPENCV_DIR_HINT})
+find_package(OpenCV REQUIRED highgui video videoio imgproc imgcodecs)
 # OpenCV 3.0 does currently not include its' includes correctly
 include_directories(${OpenCV_DIR}/include)
 
