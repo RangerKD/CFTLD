@@ -47,7 +47,7 @@ namespace tld
         hasImageDimensions(false),
         isTrackerValid(false),
         runTracker(true),
-        tracker(0)
+        tracker()
     {
         trackerEnabled = true;
         detectorEnabled = true;

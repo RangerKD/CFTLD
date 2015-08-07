@@ -90,32 +90,55 @@ namespace cf_tracking
 {
     struct KcfParameters
     {
-        double padding = 1.7;
-        double lambda = 0.0001;
-        double outputSigmaFactor = 0.05;
-        double votScaleStep = 1.05;
-        double votScaleWeight = 0.95;
-        int templateSize = 100;
-        double interpFactor = 0.012;
-        double kernelSigma = 0.6;
-        int cellSize = 4;
-        int pixelPadding = 0;
+        double padding;
+        double lambda;
+        double outputSigmaFactor;
+        double votScaleStep;
+        double votScaleWeight;
+        int templateSize;
+        double interpFactor;
+        double kernelSigma;
+        int cellSize;
+        int pixelPadding;
 
-        bool enableTrackingLossDetection = false;
-        double psrThreshold = 13.5;
-        int psrPeakDel = 1;
+        bool enableTrackingLossDetection;
+        double psrThreshold;
+        int psrPeakDel;
 
-        bool useVotScaleEstimation = false;
-        bool useDsstScaleEstimation = true;
-        double scaleSigmaFactor = static_cast<double>(0.25);
-        double scaleEstimatorStep = static_cast<double>(1.02);
-        double scaleLambda = static_cast<double>(0.01);
-        int scaleCellSize = 4;
-        int numberOfScales = 33;
+        bool useVotScaleEstimation;
+        bool useDsstScaleEstimation;
+        double scaleSigmaFactor;
+        double scaleEstimatorStep;
+        double scaleLambda;
+        int scaleCellSize;
+        int numberOfScales;
 
         // testing
-        int resizeType = cv::INTER_LINEAR;
-        bool useFhogTranspose = false;
+        int resizeType;
+        bool useFhogTranspose;
+
+        KcfParameters() : 
+          padding(1.7),
+          lambda(static_cast<double>(0.0001)),
+          outputSigmaFactor(0.05),
+          votScaleStep(1.05),
+          votScaleWeight(0.95),
+          templateSize(100),
+          interpFactor(0.012),
+          kernelSigma(0.6),
+          cellSize(4),
+          pixelPadding(0),
+          enableTrackingLossDetection(false),
+          psrThreshold(13.5),
+          psrPeakDel(1),
+          useVotScaleEstimation(false),
+          useDsstScaleEstimation(true),
+          scaleSigmaFactor(static_cast<double>(0.25)),
+          scaleEstimatorStep(static_cast<double>(1.02)),
+          scaleCellSize(4),
+          resizeType(cv::INTER_LINEAR),
+          useFhogTranspose(false)
+        {};
     };
 
     class KcfTracker : public CfTracker
@@ -153,7 +176,13 @@ namespace cf_tracking
             _ID("KCFcpp"),
             _USE_CCS(true),
             _scaleEstimator(0),
-            _debug(debug)
+            _debug(debug),
+            correlate(0),
+            cvFhog(0),
+            _modelXf(),
+            _frameIdx(1),
+            _VOT_MIN_SCALE_FACTOR(static_cast<T>(0.01)),
+            _VOT_MAX_SCALE_FACTOR(static_cast<T>(40))
         {
             correlate = &KcfTracker::gaussianCorrelation;
 
@@ -414,7 +443,7 @@ namespace cf_tracking
 
             cv::Mat numeratorf;
             cv::Mat denominatorf;
-            std::shared_ptr<FFC> xf(0);
+            std::shared_ptr<FFC> xf(new FFC);
 
             if (_scaleEstimator == 0 && _USE_VOT_SCALE_ESTIMATION)
             {
@@ -454,7 +483,7 @@ namespace cf_tracking
         bool getTrainingData(const cv::Mat& image, cv::Mat& numeratorf,
             cv::Mat& denominatorf, std::shared_ptr<FFC>& xf)
         {
-            std::shared_ptr<FFC> features(0);
+            std::shared_ptr<FFC> features(new FFC);
 
             if (getFeatures(image, _pos, _scale, features) == false)
                 return false;
@@ -753,7 +782,7 @@ namespace cf_tracking
             _pos = newPos;
             cv::Mat numerator;
             cv::Mat denominator;
-            std::shared_ptr<FFC> xf(0);
+            std::shared_ptr<FFC> xf(new FFC);
 
             if (getTrainingData(image, numerator, denominator, xf) == false)
                 return false;
@@ -851,7 +880,7 @@ namespace cf_tracking
         bool detect(const cv::Mat& image, const Point& pos,
             T scale, cv::Mat& response) const
         {
-            std::shared_ptr<FFC> features(0);
+            std::shared_ptr<FFC> features(new FFC);
 
             if (getFeatures(image, pos, scale, features) == false)
                 return false;
@@ -870,21 +899,19 @@ namespace cf_tracking
         }
 
     private:
-        KcfTracker& operator=(const KcfTracker&)
-        {}
 
     private:
         typedef cv::Mat(KcfTracker::*correlatePtr)(const std::shared_ptr<FFC>&,
             const std::shared_ptr<FFC>&) const;
-        correlatePtr correlate = 0;
+        correlatePtr correlate;
 
         typedef void(*cvFhogPtr)
             (const cv::Mat& img, std::shared_ptr<FFC>& cvFeatures, int binSize, int fhogChannelsToCopy);
-        cvFhogPtr cvFhog = 0;
+        cvFhogPtr cvFhog;
 
         cv::Mat _cosWindow;
         cv::Mat _y;
-        std::shared_ptr<FFC> _modelXf = 0;
+        std::shared_ptr<FFC> _modelXf;
         cv::Mat _modelNumeratorf;
         cv::Mat _modelDenominatorf;
         cv::Mat _modelAlphaf;
@@ -896,7 +923,7 @@ namespace cf_tracking
         Size _templateSz;
         T _scale;
         T _templateScaleFactor;
-        int _frameIdx = 1;
+        int _frameIdx;
         bool _isInitialized;
         ScaleEstimator<T>* _scaleEstimator;
 
@@ -921,8 +948,8 @@ namespace cf_tracking
         const bool _ENABLE_TRACKING_LOSS_DETECTION;
         const bool _USE_CCS;
         // it should be possible to find more reasonable values for min/max scale; application dependent
-        T _VOT_MIN_SCALE_FACTOR = static_cast<T>(0.01);
-        T _VOT_MAX_SCALE_FACTOR = static_cast<T>(40);
+        T _VOT_MIN_SCALE_FACTOR;
+        T _VOT_MAX_SCALE_FACTOR;
 
         KcfDebug<T>* _debug;
     };
