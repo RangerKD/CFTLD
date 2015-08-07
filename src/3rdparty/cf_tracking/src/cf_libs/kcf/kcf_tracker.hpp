@@ -136,6 +136,7 @@ namespace cf_tracking
           scaleSigmaFactor(static_cast<double>(0.25)),
           scaleEstimatorStep(static_cast<double>(1.02)),
           scaleCellSize(4),
+          numberOfScales(33),
           resizeType(cv::INTER_LINEAR),
           useFhogTranspose(false)
         {};
