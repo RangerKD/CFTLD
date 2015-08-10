@@ -78,9 +78,6 @@ namespace tld
                 tracker.reset(new KcfTracker(kcfParameters));
             }
         }
-
-        std::cout << "\n\n\n-----------CF_TLD---------------\n";
-        std::cout << "---------- " << tracker->getId() << " --------------" << "\n\n\n";
     }
 
     TLD::~TLD()
@@ -401,8 +398,6 @@ namespace tld
         }
 
         detectorCascade->nnClassifier->learn(patches);
-
-        //cout << "NN has now " << detectorCascade->nnClassifier->truePositives->size() << " positives and " << detectorCascade->nnClassifier->falsePositives->size() << " negatives.\n";
 
         delete[] overlap;
     }

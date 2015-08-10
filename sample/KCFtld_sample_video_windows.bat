@@ -1,1 +1,0 @@
-cftld.exe sample_video.cfg

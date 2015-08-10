@@ -1,1 +1,0 @@
-cftld.exe -x sample_image_sequence.cfg

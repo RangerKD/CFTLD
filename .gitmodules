@@ -1,3 +1,4 @@
-[submodule "src/lib/cf_tracking"]
-	path = src/lib/cf_tracking
-	url = git@github.com:tracedev/cf_tracking.git
+[submodule "src/lib/cftld"]
+    path = src/lib/cftld
+    url = git@github.com:tracedev/CFTLD.git
+    branch = master
