@@ -27,4 +27,4 @@ add_library(libcftld
     src/cftld/TLDUtil.cpp
     src/cftld/VarianceFilter.cpp)
 
-target_link_libraries(libcftld cf_tracking ${OpenCV_LIBS})
+target_link_libraries(libcftld cf_tracking_lib ${OpenCV_LIBS})
