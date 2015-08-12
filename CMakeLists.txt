@@ -5,11 +5,15 @@ cmake_minimum_required(VERSION 2.8)
 find_package(OpenCV REQUIRED highgui video videoio imgproc imgcodecs)
 
 include(libs/cf_tracking/cmake)
-set(CF_INCLUDE ${CF_INCLUDE} PARENT_SCOPE)
+set(LIBCFTLD_INCLUDE "${CF_TRACKING_INCLUDE};
+  ${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(LIBCFTLD_INCLUDE ${LIBCFTLD_INCLUDE} PARENT_SCOPE)
+
 
 include_directories(
     src/imacq
     src/cftld
+    ${CF_TRACKING_INCLUDE}
     ${OpenCV_INCLUDE_DIRS})
 
 add_library(libcftld
