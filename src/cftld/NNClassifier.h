@@ -33,19 +33,17 @@
 #include "NormalizedPatch.h"
 #include "DetectionResult.h"
 
-namespace tld
-{
-    class NNClassifier
-    {
-        float ncc(float *f1, float *f2);
-        void showWindow(const cv::Mat &img, int windowIdx);
+namespace tld {
+    class NNClassifier {
+        float ncc(float* f1, float* f2);
+        void showWindow(const cv::Mat& img, int windowIdx);
     public:
         bool enabled;
 
-        int *windows;
+        int* windows;
         float thetaFP;
         float thetaTP;
-        DetectionResult *detectionResult;
+        DetectionResult* detectionResult;
         std::vector<NormalizedPatch>* falsePositives;
         std::vector<NormalizedPatch>* truePositives;
 
@@ -53,11 +51,11 @@ namespace tld
         virtual ~NNClassifier();
 
         void release();
-        float classifyPatch(NormalizedPatch *patch);
-        float classifyBB(const cv::Mat &img, cv::Rect *bb);
-        float classifyWindow(const cv::Mat &img, int windowIdx);
+        float classifyPatch(NormalizedPatch* patch);
+        float classifyBB(const cv::Mat& img, cv::Rect* bb);
+        float classifyWindow(const cv::Mat& img, int windowIdx);
         void learn(std::vector<NormalizedPatch> patches);
-        bool filter(const cv::Mat &img, int windowIdx);
+        bool filter(const cv::Mat& img, int windowIdx);
     };
 } /* namespace tld */
 #endif /* NNCLASSIFIER_H_ */

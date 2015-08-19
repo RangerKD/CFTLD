@@ -31,18 +31,16 @@
 #include "IntegralImage.h"
 #include "DetectionResult.h"
 
-namespace tld
-{
-    class VarianceFilter
-    {
+namespace tld {
+    class VarianceFilter {
         IntegralImage<int>* integralImg;
         IntegralImage<long long>* integralImg_squared;
 
     public:
         bool enabled;
-        int *windowOffsets;
+        int* windowOffsets;
 
-        DetectionResult *detectionResult;
+        DetectionResult* detectionResult;
 
         float minVar;
 
@@ -50,9 +48,9 @@ namespace tld
         virtual ~VarianceFilter();
 
         void release();
-        void nextIteration(const cv::Mat &img);
+        void nextIteration(const cv::Mat& img);
         bool filter(int idx);
-        float calcVariance(int *off);
+        float calcVariance(int* off);
     };
 } /* namespace tld */
 #endif /* VARIANCEFILTER_H_ */

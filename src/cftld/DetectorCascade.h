@@ -32,17 +32,15 @@
 #include "Clustering.h"
 #include "NNClassifier.h"
 
-namespace tld
-{
+namespace tld {
     //Constants
     static const int TLD_WINDOW_SIZE = 5;
     static const int TLD_WINDOW_OFFSET_SIZE = 6;
 
-    class DetectorCascade
-    {
+    class DetectorCascade {
         //Working data
         int numScales;
-        cv::Size *scales;
+        cv::Size* scales;
     public:
         //Configurable members
         int minScale;
@@ -61,19 +59,19 @@ namespace tld
         int objHeight;
 
         int numWindows;
-        int *windows;
-        int *windowOffsets;
+        int* windows;
+        int* windowOffsets;
 
         //State data
         bool initialised;
 
         //Components of Detector Cascade
-        VarianceFilter *varianceFilter;
-        EnsembleClassifier *ensembleClassifier;
-        Clustering *clustering;
-        NNClassifier *nnClassifier;
+        VarianceFilter* varianceFilter;
+        EnsembleClassifier* ensembleClassifier;
+        Clustering* clustering;
+        NNClassifier* nnClassifier;
 
-        DetectionResult *detectionResult;
+        DetectionResult* detectionResult;
 
         void propagateMembers();
 
@@ -87,7 +85,7 @@ namespace tld
 
         void release();
         void cleanPreviousData();
-        void detect(const cv::Mat &img);
+        void detect(const cv::Mat& img);
     };
 } /* namespace tld */
 #endif /* DETECTORCASCADE_H_ */

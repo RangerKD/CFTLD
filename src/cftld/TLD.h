@@ -34,10 +34,8 @@
 #include "cf_tracker.hpp"
 #include "DetectorCascade.h"
 
-namespace tld
-{
-    class TLD
-    {
+namespace tld {
+    class TLD {
     private:
         void storeCurrentData();
         void fuseHypotheses(const cv::Mat& colorImg);
@@ -46,10 +44,10 @@ namespace tld
         void deleteCurrentBB();
         std::shared_ptr<cf_tracking::CfTracker> tracker;
     public:
-        DetectorCascade *detectorCascade;
-        NNClassifier *nnClassifier;
+        DetectorCascade* detectorCascade;
+        NNClassifier* nnClassifier;
         cv::Mat currImg;
-        cv::Rect *currBB;
+        cv::Rect* currBB;
         cv::Rect trackerBB;
         bool valid;
         bool isTrackerValid;
@@ -69,8 +67,8 @@ namespace tld
         virtual ~TLD();
         void init(bool useDsstTracker);
         void release();
-        void selectObject(const cv::Mat &img, cv::Rect *bb);
-        void processImage(cv::Mat &img);
+        void selectObject(const cv::Mat& img, cv::Rect* bb);
+        void processImage(cv::Mat& img);
     };
 } /* namespace tld */
 #endif /* TLD_H_ */
