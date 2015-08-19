@@ -32,13 +32,11 @@
 
 using namespace cv;
 
-namespace tld
-{
+namespace tld {
     //TODO: Convert this to a function
 #define sub2idx(x,y,imgWidthStep) ((int) (floor((x)+0.5) + floor((y)+0.5)*(imgWidthStep)))
 
-    DetectorCascade::DetectorCascade()
-    {
+    DetectorCascade::DetectorCascade() {
         objWidth = -1; //MUST be set before calling init
         objHeight = -1; //MUST be set before calling init
         useShift = 1;
@@ -64,8 +62,7 @@ namespace tld
         detectionResult = new DetectionResult();
     }
 
-    DetectorCascade::~DetectorCascade()
-    {
+    DetectorCascade::~DetectorCascade() {
         release();
 
         delete varianceFilter;
@@ -75,10 +72,8 @@ namespace tld
         delete clustering;
     }
 
-    void DetectorCascade::init(std::shared_ptr<std::mt19937> rng)
-    {
-        if (imgWidth == -1 || imgHeight == -1 || imgWidthStep == -1 || objWidth == -1 || objHeight == -1)
-        {
+    void DetectorCascade::init(std::shared_ptr<std::mt19937> rng) {
+        if (imgWidth == -1 || imgHeight == -1 || imgWidthStep == -1 || objWidth == -1 || objHeight == -1) {
             //printf("Error: Window dimensions not set\n"); //TODO: Convert this to exception
         }
 
@@ -93,8 +88,7 @@ namespace tld
     }
 
     //TODO: This is error-prone. Better give components a reference to DetectorCascade?
-    void DetectorCascade::propagateMembers()
-    {
+    void DetectorCascade::propagateMembers() {
         detectionResult->init(numWindows, numTrees);
 
         varianceFilter->windowOffsets = windowOffsets;
@@ -114,10 +108,8 @@ namespace tld
         clustering->detectionResult = detectionResult;
     }
 
-    void DetectorCascade::release()
-    {
-        if (!initialised)
-        {
+    void DetectorCascade::release() {
+        if (!initialised) {
             return; //Do nothing
         }
 
@@ -144,8 +136,7 @@ namespace tld
         detectionResult->release();
     }
 
-    void DetectorCascade::cleanPreviousData()
-    {
+    void DetectorCascade::cleanPreviousData() {
         detectionResult->reset();
     }
 
@@ -154,8 +145,7 @@ namespace tld
      * scales are stored using the format <w h>
      *
      */
-    void DetectorCascade::initWindowsAndScales()
-    {
+    void DetectorCascade::initWindowsAndScales() {
         int scanAreaX = 1; // It is important to start with 1/1, because the integral images aren't defined at pos(-1,-1) due to speed reasons
         int scanAreaY = 1;
         int scanAreaW = imgWidth - 1;
@@ -163,33 +153,29 @@ namespace tld
 
         int windowIndex = 0;
 
-        scales = new Size[maxScale - minScale + 1]{};
+        scales = new Size[maxScale - minScale + 1] {};
 
         numWindows = 0;
 
         int scaleIndex = 0;
 
-        for (int i = minScale; i <= maxScale; i++)
-        {
+        for (int i = minScale; i <= maxScale; i++) {
             float scale = pow(1.2f, i);
             int w = static_cast<int>(objWidth * scale);
             int h = static_cast<int>(objHeight * scale);
             int ssw, ssh;
 
-            if (useShift)
-            {
+            if (useShift) {
                 ssw = static_cast<int>(max<float>(1, w * shift));
                 ssh = static_cast<int>(max<float>(1, h * shift));
-            }
-            else
-            {
+            } else {
                 ssw = 1;
                 ssh = 1;
             }
 
             if (w < minSize || h < minSize || w > scanAreaW
-                || h > scanAreaH)
-                continue;
+                    || h > scanAreaH)
+            { continue; }
 
             scales[scaleIndex].width = w;
             scales[scaleIndex].height = h;
@@ -201,31 +187,25 @@ namespace tld
 
         numScales = scaleIndex;
 
-        windows = new int[TLD_WINDOW_SIZE * numWindows]{};
+        windows = new int[TLD_WINDOW_SIZE * numWindows] {};
 
-        for (scaleIndex = 0; scaleIndex < numScales; scaleIndex++)
-        {
+        for (scaleIndex = 0; scaleIndex < numScales; scaleIndex++) {
             int w = scales[scaleIndex].width;
             int h = scales[scaleIndex].height;
 
             int ssw, ssh;
 
-            if (useShift)
-            {
+            if (useShift) {
                 ssw = static_cast<int>(max<float>(1, w * shift));
                 ssh = static_cast<int>(max<float>(1, h * shift));
-            }
-            else
-            {
+            } else {
                 ssw = 1;
                 ssh = 1;
             }
 
-            for (int y = scanAreaY; y + h <= scanAreaY + scanAreaH; y += ssh)
-            {
-                for (int x = scanAreaX; x + w <= scanAreaX + scanAreaW; x += ssw)
-                {
-                    int *bb = &windows[TLD_WINDOW_SIZE * windowIndex];
+            for (int y = scanAreaY; y + h <= scanAreaY + scanAreaH; y += ssh) {
+                for (int x = scanAreaX; x + w <= scanAreaX + scanAreaW; x += ssw) {
+                    int* bb = &windows[TLD_WINDOW_SIZE * windowIndex];
                     tldCopyBoundaryToArray<int>(x, y, w, h, bb);
                     bb[4] = scaleIndex;
 
@@ -240,16 +220,14 @@ namespace tld
     //Creates offsets that can be added to bounding boxes
     //offsets are contained in the form delta11, delta12,... (combined index of dw and dh)
     //Order: scale->tree->feature
-    void DetectorCascade::initWindowOffsets()
-    {
-        windowOffsets = new int[TLD_WINDOW_OFFSET_SIZE * numWindows]{};
-        int *off = windowOffsets;
+    void DetectorCascade::initWindowOffsets() {
+        windowOffsets = new int[TLD_WINDOW_OFFSET_SIZE * numWindows] {};
+        int* off = windowOffsets;
 
         int windowSize = TLD_WINDOW_SIZE;
 
-        for (int i = 0; i < numWindows; i++)
-        {
-            int *window = windows + windowSize * i;
+        for (int i = 0; i < numWindows; i++) {
+            int* window = windows + windowSize * i;
             *off++ = sub2idx(window[0] - 1, window[1] - 1, imgWidthStep); // x1-1,y1-1
             *off++ = sub2idx(window[0] - 1, window[1] + window[3] - 1, imgWidthStep); // x1-1,y2
             *off++ = sub2idx(window[0] + window[2] - 1, window[1] - 1, imgWidthStep); // x2,y1-1
@@ -259,14 +237,12 @@ namespace tld
         }
     }
 
-    void DetectorCascade::detect(const Mat &img)
-    {
+    void DetectorCascade::detect(const Mat& img) {
         //For every bounding box, the output is confidence, pattern, variance
 
         detectionResult->reset();
 
-        if (!initialised)
-        {
+        if (!initialised) {
             return;
         }
 
@@ -274,26 +250,23 @@ namespace tld
         varianceFilter->nextIteration(img); //Calculates integral images
         ensembleClassifier->nextIteration(img);
 
-#pragma omp parallel for
-        for (int i = 0; i < numWindows; ++i)
-        {
-            if (!varianceFilter->filter(i))
-            {
+        #pragma omp parallel for
+
+        for (int i = 0; i < numWindows; ++i) {
+            if (!varianceFilter->filter(i)) {
                 detectionResult->posteriors[i] = 0;
                 continue;
             }
 
-            if (!ensembleClassifier->filter(i))
-            {
+            if (!ensembleClassifier->filter(i)) {
                 continue;
             }
 
-            if (!nnClassifier->filter(img, i))
-            {
+            if (!nnClassifier->filter(img, i)) {
                 continue;
             }
 
-#pragma omp critical
+            #pragma omp critical
             detectionResult->confidentIndices->push_back(i);
         }
 

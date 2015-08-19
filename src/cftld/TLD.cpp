@@ -41,14 +41,12 @@ using namespace std;
 using namespace cv;
 using namespace cf_tracking;
 
-namespace tld
-{
+namespace tld {
     TLD::TLD() :
         hasImageDimensions(false),
         isTrackerValid(false),
         runTracker(true),
-        tracker()
-    {
+        tracker() {
         trackerEnabled = true;
         detectorEnabled = true;
         learningEnabled = true;
@@ -61,18 +59,13 @@ namespace tld
         nnClassifier = detectorCascade->nnClassifier;
     }
 
-    void TLD::init(bool useDsstTracker)
-    {
-        if (!tracker)
-        {
-            if (useDsstTracker)
-            {
+    void TLD::init(bool useDsstTracker) {
+        if (!tracker) {
+            if (useDsstTracker) {
                 DsstParameters dsstParameters;
                 dsstParameters.enableTrackingLossDetection = true;
                 tracker.reset(new DsstTracker(dsstParameters));
-            }
-            else
-            {
+            } else {
                 KcfParameters kcfParameters;
                 kcfParameters.enableTrackingLossDetection = true;
                 tracker.reset(new KcfTracker(kcfParameters));
@@ -80,37 +73,31 @@ namespace tld
         }
     }
 
-    TLD::~TLD()
-    {
+    TLD::~TLD() {
         storeCurrentData();
         deleteCurrentBB();
 
-        if (detectorCascade)
-        {
+        if (detectorCascade) {
             delete detectorCascade;
             detectorCascade = NULL;
         }
     }
 
-    void TLD::release()
-    {
+    void TLD::release() {
         detectorCascade->release();
         deleteCurrentBB();
     }
 
-    void TLD::storeCurrentData()
-    {
+    void TLD::storeCurrentData() {
         isTrackerValid = false;
         detectorCascade->cleanPreviousData(); //Reset detector results
     }
 
-    void TLD::selectObject(const Mat &img, Rect *bb)
-    {
+    void TLD::selectObject(const Mat& img, Rect* bb) {
         if (!tracker)
-            return;
+        { return; }
 
-        if (!rng)
-        {
+        if (!rng) {
             std::random_device rd;
             std::shared_ptr<std::mt19937> g(new std::mt19937(rd()));
             g->seed((unsigned long)seed);
@@ -123,8 +110,7 @@ namespace tld
         cvtColor(img, grayFrame, CV_BGR2GRAY);
 
         // initialize the image dimensions once
-        if (!hasImageDimensions)
-        {
+        if (!hasImageDimensions) {
             detectorCascade->imgWidth = grayFrame.cols;
             detectorCascade->imgHeight = grayFrame.rows;
             detectorCascade->imgWidthStep = static_cast<int>(grayFrame.step);
@@ -138,10 +124,10 @@ namespace tld
         detectorCascade->objHeight = bb->height;
 
         if (bb->height < detectorCascade->minSize)
-            detectorCascade->minSize = bb->height;
+        { detectorCascade->minSize = bb->height; }
 
         if (bb->width < detectorCascade->minSize)
-            detectorCascade->minSize = bb->width;
+        { detectorCascade->minSize = bb->width; }
 
         //Init detector cascade
         detectorCascade->init(rng);
@@ -156,10 +142,9 @@ namespace tld
         initialLearning();
     }
 
-    void TLD::processImage(cv::Mat &img)
-    {
+    void TLD::processImage(cv::Mat& img) {
         if (!tracker)
-            return;
+        { return; }
 
         storeCurrentData();
 
@@ -167,35 +152,32 @@ namespace tld
         cvtColor(img, grayFrame, CV_BGR2GRAY);
         currImg = grayFrame; // Store new image , right after storeCurrentData();
 
-        if (trackerEnabled && runTracker)
-        {
+        if (trackerEnabled && runTracker) {
             isTrackerValid = tracker->update(img, trackerBB);
 
             if (!isTrackerValid)
-                runTracker = false;
+            { runTracker = false; }
         }
 
         if (detectorEnabled && (!alternating || !isTrackerValid))
-            detectorCascade->detect(grayFrame);
+        { detectorCascade->detect(grayFrame); }
 
         fuseHypotheses(img);
 
         learn();
     }
 
-    void TLD::fuseHypotheses(const Mat& colorImg)
-    {
+    void TLD::fuseHypotheses(const Mat& colorImg) {
         int numClusters = detectorCascade->detectionResult->numClusters;
-        Rect *detectorBB = detectorCascade->detectionResult->detectorBB;
+        Rect* detectorBB = detectorCascade->detectionResult->detectorBB;
         deleteCurrentBB();
 
         currConf = 0;
         valid = false;
 
-        if (!detectorEnabled)
-        {
+        if (!detectorEnabled) {
             if (!isTrackerValid)
-                return;
+            { return; }
 
             currBB = tldCopyRect(&trackerBB);
             valid = true;
@@ -205,29 +187,22 @@ namespace tld
         float confDetector = 0;
 
         if (numClusters == 1)
-            confDetector = nnClassifier->classifyBB(currImg, detectorBB);
+        { confDetector = nnClassifier->classifyBB(currImg, detectorBB); }
 
-        if (isTrackerValid)
-        {
+        if (isTrackerValid) {
             float confTracker = nnClassifier->classifyBB(currImg, &trackerBB);
             currBB = tldCopyRect(&trackerBB);
             valid = true;
             currConf = confTracker;
-        }
-        else if (numClusters == 1)
-        {
+        } else if (numClusters == 1) {
             // reinit tracker
-            if (trackerEnabled)
-            {
-                if (tracker->updateAt(colorImg, *detectorBB))
-                {
+            if (trackerEnabled) {
+                if (tracker->updateAt(colorImg, *detectorBB)) {
                     currConf = nnClassifier->classifyBB(currImg, detectorBB);
                     currBB = tldCopyRect(detectorBB);
                     valid = true;
                     runTracker = true;
-                }
-                else
-                {
+                } else {
                     deleteCurrentBB();
                     currConf = 0;
                     valid = false;
@@ -236,11 +211,10 @@ namespace tld
         }
     }
 
-    void TLD::initialLearning()
-    {
+    void TLD::initialLearning() {
         learning = true; //This is just for display purposes
 
-        DetectionResult *detectionResult = detectorCascade->detectionResult;
+        DetectionResult* detectionResult = detectorCascade->detectionResult;
 
         detectorCascade->detect(currImg);
 
@@ -252,7 +226,7 @@ namespace tld
         float initVar = tldCalcVariance(initPatch.values, TLD_PATCH_SIZE * TLD_PATCH_SIZE);
         detectorCascade->varianceFilter->minVar = initVar / 2;
 
-        float *overlap = new float[detectorCascade->numWindows]{};
+        float* overlap = new float[detectorCascade->numWindows] {};
         tldOverlapRect(detectorCascade->windows, detectorCascade->numWindows, currBB, overlap);
 
         //Add all bounding boxes with high overlap
@@ -260,19 +234,15 @@ namespace tld
         vector<int> negativeIndices;
 
         //First: Find overlapping positive and negative patches
-        for (int i = 0; i < detectorCascade->numWindows; i++)
-        {
-            if (overlap[i] > 0.7)
-            {
+        for (int i = 0; i < detectorCascade->numWindows; i++) {
+            if (overlap[i] > 0.7) {
                 positiveIndices.push_back(pair<int, float>(i, overlap[i]));
             }
 
-            if (overlap[i] < 0.2)
-            {
+            if (overlap[i] < 0.2) {
                 float variance = detectionResult->variances[i];
 
-                if (!detectorCascade->varianceFilter->enabled || variance > detectorCascade->varianceFilter->minVar)   //TODO: This check is unnecessary if minVar would be set before calling detect.
-                {
+                if (!detectorCascade->varianceFilter->enabled || variance > detectorCascade->varianceFilter->minVar) { //TODO: This check is unnecessary if minVar would be set before calling detect.
                     negativeIndices.push_back(i);
                 }
             }
@@ -286,8 +256,7 @@ namespace tld
 
         size_t numIterations = std::min<size_t>(positiveIndices.size(), 10); //Take at most 10 bounding boxes (sorted by overlap)
 
-        for (int i = 0; i < numIterations; i++)
-        {
+        for (int i = 0; i < numIterations; i++) {
             int idx = positiveIndices.at(i).first;
             //Learn this bounding box
             //TODO: Somewhere here image warping might be possible
@@ -297,8 +266,7 @@ namespace tld
         std::shuffle(negativeIndices.begin(), negativeIndices.end(), *rng);
 
         //Choose 100 random patches for negative examples
-        for (size_t i = 0; i < std::min<size_t>(100, negativeIndices.size()); i++)
-        {
+        for (size_t i = 0; i < std::min<size_t>(100, negativeIndices.size()); i++) {
             int idx = negativeIndices.at(i);
 
             NormalizedPatch patch;
@@ -312,26 +280,24 @@ namespace tld
     }
 
     //Do this when current trajectory is valid
-    void TLD::learn()
-    {
-        if (!learningEnabled || !valid || !detectorEnabled)
-        {
+    void TLD::learn() {
+        if (!learningEnabled || !valid || !detectorEnabled) {
             learning = false;
             return;
         }
 
         learning = true;
 
-        DetectionResult *detectionResult = detectorCascade->detectionResult;
+        DetectionResult* detectionResult = detectorCascade->detectionResult;
 
         if (!detectionResult->containsValidData)
-            detectorCascade->detect(currImg);
+        { detectorCascade->detect(currImg); }
 
         //This is the positive patch
         NormalizedPatch patch;
         tldExtractNormalizedPatchRect(currImg, currBB, patch.values);
 
-        float *overlap = new float[detectorCascade->numWindows]{};
+        float* overlap = new float[detectorCascade->numWindows] {};
         tldOverlapRect(detectorCascade->windows, detectorCascade->numWindows, currBB, overlap);
 
         //Add all bounding boxes with high overlap
@@ -341,22 +307,17 @@ namespace tld
 
         //First: Find overlapping positive and negative patches
 
-        for (int i = 0; i < detectorCascade->numWindows; i++)
-        {
-            if (overlap[i] > 0.7)
-            {
+        for (int i = 0; i < detectorCascade->numWindows; i++) {
+            if (overlap[i] > 0.7) {
                 positiveIndices.push_back(pair<int, float>(i, overlap[i]));
             }
 
-            if (overlap[i] < 0.2)
-            {
-                if (!detectorCascade->ensembleClassifier->enabled || detectionResult->posteriors[i] > 0.5)   //Should be 0.5 according to the paper
-                {
+            if (overlap[i] < 0.2) {
+                if (!detectorCascade->ensembleClassifier->enabled || detectionResult->posteriors[i] > 0.5) { //Should be 0.5 according to the paper
                     negativeIndices.push_back(i);
                 }
 
-                if (!detectorCascade->ensembleClassifier->enabled || detectionResult->posteriors[i] > 0.5)
-                {
+                if (!detectorCascade->ensembleClassifier->enabled || detectionResult->posteriors[i] > 0.5) {
                     negativeIndicesForNN.push_back(i);
                 }
             }
@@ -372,23 +333,20 @@ namespace tld
 
         size_t numIterations = std::min<size_t>(positiveIndices.size(), 10); //Take at most 10 bounding boxes (sorted by overlap)
 
-        for (size_t i = 0; i < negativeIndices.size(); i++)
-        {
+        for (size_t i = 0; i < negativeIndices.size(); i++) {
             int idx = negativeIndices.at(i);
             //TODO: Somewhere here image warping might be possible
             detectorCascade->ensembleClassifier->learn(&detectorCascade->windows[TLD_WINDOW_SIZE * idx], false, &detectionResult->featureVectors[detectorCascade->numTrees * idx]);
         }
 
         //TODO: Randomization might be a good idea
-        for (int i = 0; i < numIterations; i++)
-        {
+        for (int i = 0; i < numIterations; i++) {
             int idx = positiveIndices.at(i).first;
             //TODO: Somewhere here image warping might be possible
             detectorCascade->ensembleClassifier->learn(&detectorCascade->windows[TLD_WINDOW_SIZE * idx], true, &detectionResult->featureVectors[detectorCascade->numTrees * idx]);
         }
 
-        for (size_t i = 0; i < negativeIndicesForNN.size(); i++)
-        {
+        for (size_t i = 0; i < negativeIndicesForNN.size(); i++) {
             int idx = negativeIndicesForNN.at(i);
 
             NormalizedPatch patch;
@@ -402,10 +360,8 @@ namespace tld
         delete[] overlap;
     }
 
-    inline void TLD::deleteCurrentBB()
-    {
-        if (currBB)
-        {
+    inline void TLD::deleteCurrentBB() {
+        if (currBB) {
             delete currBB;
             currBB = NULL;
         }
