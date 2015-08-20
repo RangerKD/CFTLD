@@ -1,12 +1,14 @@
-# Introduction
+# CFTLD
+This is a fork of [CFTLD](https://github.com/klahaag/CFtld), which was a fork of [OpenTLD](https://github.com/gnebehay/OpenTLD).
 
-This is a fork of the [C++ implementation of OpenTLD](https://github.com/gnebehay/OpenTLD) called CFTLD.
-OpenTLD was originally proposed in [1] and implemented by Georg Nebehay in C++.
+OpenTLD was originally proposed in [1] and implemented by Georg Nebehay in C++. CFTLD was implemented by github user klahaag.
+
+*From the author:*
 
 This fork uses C++ implementations of correlation filter based trackers as short-term trackers. Both short-term trackers are modified variants of the visual trackers proposed in [2,3].
-The short-term trackers are extended with target loss detection capabilities as in [4] and use the C++ implementation [5] of the FHOG features proposed in [6]. More implementation details of the short-term trackers can be found [here](src/3rdparty/cf_tracking/README.md). The detection cascade is only used to suggest possible target locations to the short-term trackers for redetection purposes. It cannot reinitialize the short-term trackers. The short-term trackers decide whether a suggested patch actually contains the target.
+The short-term trackers are extended with target loss detection capabilities as in [4] and use the C++ implementation [5] of the FHOG features proposed in [6]. The detection cascade is only used to suggest possible target locations to the short-term trackers for redetection purposes. It cannot reinitialize the short-term trackers. The short-term trackers decide whether a suggested patch actually contains the target.
 
-The system starts with the KCF as default short-term tracker.
+KCF is the default short-term tracker.
 
 # Commercial Use (US)
 The code using linear correlation filters may be affected by a US patent. If you want to use this code commercially in the US please refer to http://www.cs.colostate.edu/~vision/ocof_toolset_2012/index.php for possible patent claims.
@@ -31,7 +33,6 @@ author = {Henriques, J. F. and Caseiro, R. and Martins, P. and Batista, J.},
 journal = {Pattern Analysis and Machine Intelligence, IEEE Transactions on},
 year = {2015}
 ```
-
 
 [3]
 ```

@@ -9,7 +9,6 @@ set(LIBCFTLD_INCLUDE "${CF_TRACKING_INCLUDE};
   ${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBCFTLD_INCLUDE ${LIBCFTLD_INCLUDE} PARENT_SCOPE)
 
-
 include_directories(
     src/imacq
     src/cftld
